@@ -29,8 +29,11 @@ flowchart TB
     subgraph layers [Image layers]
         B["base/ — core-* images<br/>Xvnc + openbox, optional xrdp/sshd<br/>(internal build parents, never published)"]
         D["desktop/ — XFCE<br/>ubuntu-desktop-noble, debian-desktop-13, fedora-desktop-43"]
-        A["apps/ — one app per image<br/>firefox, chrome, libreoffice, devtools<br/>(VNC-only by construction)"]
-        B --> D --> A
+        A["apps/ — single-app kiosks (WAAS_APP)<br/>firefox, chrome, libreoffice<br/>(no desktop in the image, VNC-only)"]
+        DT["apps/devtools — full XFCE desktop<br/>(the one exception)"]
+        B --> D
+        B --> A
+        D --> DT
     end
 ```
 
@@ -41,7 +44,13 @@ flowchart TB
 **VNC is the recommended protocol for Linux**; RDP is a compatibility
 option, and SSH exists only on the OS-level desktop images. Per-app
 images (`apps/*`) are VNC-only **by construction** — xrdp and sshd
-binaries are simply absent, not merely disabled.
+binaries are simply absent, not merely disabled — and ship as
+**single-app kiosks**: they are built on the bare core (no desktop
+environment in the image at all, Kasm-style), and the `WAAS_APP`
+session mode runs the one application undecorated and maximized, with
+no panel, terminal or window-manager keybindings behind it. The
+exception is `devtools`, a real XFCE desktop on the VNC-only XFCE
+parent.
 
 ## The contract with the Workspace CR
 
@@ -59,7 +68,7 @@ that's the whole interface, whether the image comes from waas-images or
 | User | `waas_user`, UID/GID `1000:1000`, home **`/home/waas_user`** = the operator's PVC mount; fresh volumes are seeded from `/etc/skel` |
 | Writable paths | `/home/waas_user` (PVC), `/tmp`, `/run` (emptyDirs) — everything else read-only-safe |
 | Required env | **`WAAS_DESKTOP_PASSWORD`** — one session password shared by VNC and RDP. The image **refuses to start without it**. Legacy names (`VNC_PW`, `RDP_PASSWORD`) are refused with an explicit error. |
-| Optional env | `WAAS_VNC_RESOLUTION`, `WAAS_VNC_COL_DEPTH`, `WAAS_VNC_ENABLED`, `WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`, `WAAS_SSH_ENABLED`, `WAAS_SSH_AUTHORIZED_KEYS(_FILE)`, `WAAS_STARTUP`, `WAAS_AUDIO_ENABLED`, `WAAS_TLS_CERT`/`WAAS_TLS_KEY` |
+| Optional env | `WAAS_VNC_RESOLUTION`, `WAAS_VNC_COL_DEPTH`, `WAAS_VNC_ENABLED`, `WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`, `WAAS_SSH_ENABLED`, `WAAS_SSH_AUTHORIZED_KEYS(_FILE)`, `WAAS_SSH_HOST_KEY_FILE`, `WAAS_STARTUP` (full session command), `WAAS_APP` (single-app kiosk command — mutually exclusive with `WAAS_STARTUP`), `WAAS_AUDIO_ENABLED`, `WAAS_TLS_CERT`/`WAAS_TLS_KEY` |
 | Init hook | optional ConfigMap mounted at `/etc/waas/init.d/` — `*.sh` sourced at boot, as UID 1000 |
 | Recommended pod securityContext | `runAsNonRoot`, `runAsUser/fsGroup: 1000`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault` → PodSecurity **restricted** compliant |
 
