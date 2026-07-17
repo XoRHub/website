@@ -1,0 +1,48 @@
+# Build on every PR; build + deploy to GitHub Pages on push to main.
+# Deployment uses actions/deploy-pages (no gh-pages branch to maintain):
+# enable Pages with source "GitHub Actions" in the repo settings once.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Toolchain from .mise.toml — the same pins `mise install` uses
+      # locally, one source for both (same doctrine as the waas repo).
+      - uses: jdx/mise-action@v2
+
+      - run: npm ci
+      - run: npm run typecheck
+      # prebuild regenerates the CRD reference pages from the vendored
+      # schemas (npm run gen:crd), then Docusaurus builds every version.
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
