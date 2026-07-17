@@ -1,0 +1,32 @@
+/**
+ * Global styles. The palette is a neutral indigo — swap for the XorHub
+ * brand colors once they exist.
+ */
+
+:root {
+  --ifm-color-primary: #4f46e5;
+  --ifm-color-primary-dark: #3f37e2;
+  --ifm-color-primary-darker: #3730e0;
+  --ifm-color-primary-darkest: #241dbe;
+  --ifm-color-primary-light: #5f57e8;
+  --ifm-color-primary-lighter: #675fe9;
+  --ifm-color-primary-lightest: #8079ee;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #a5b4fc;
+  --ifm-color-primary-dark: #8296fb;
+  --ifm-color-primary-darker: #7187fa;
+  --ifm-color-primary-darkest: #3d5af8;
+  --ifm-color-primary-light: #c8d2fd;
+  --ifm-color-primary-lighter: #dae1fe;
+  --ifm-color-primary-lightest: #ffffff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* CRD reference: keep deeply nested field paths readable */
+.crd-field-path code {
+  white-space: nowrap;
+}

@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Docusaurus build artifacts
+build/
+.docusaurus/
+.cache-loader/
+
+# Generated CRD reference pages — regenerated at every build from the
+# vendored schemas (npm run gen:crd). The versioned_docs/ copies made by
+# `docusaurus docs:version` ARE committed (frozen snapshots).
+docs/reference/crds/workspace.mdx
+docs/reference/crds/workspacetemplate.mdx
+docs/reference/crds/workspacepolicy.mdx
+docs/reference/crds/workspaceimage.mdx
+
+# Misc
+.DS_Store
+npm-debug.log*
