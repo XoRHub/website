@@ -27,7 +27,25 @@ const config: Config = {
       onBrokenMarkdownLinks: 'throw',
     },
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    [
+      // Local full-text search — no external service, the index is
+      // built at build time and served as static files (GitHub Pages
+      // friendly). Opens with Ctrl+K / ⌘K (searchBarShortcutKeymap
+      // "mod+k", the plugin default, kept explicit on purpose).
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexBlog: false,
+        docsRouteBasePath: '/',
+        explicitSearchResultPath: true,
+        searchBarShortcut: true,
+        searchBarShortcutHint: true,
+        searchBarShortcutKeymap: 'mod+k',
+      },
+    ],
+  ],
 
   presets: [
     [
