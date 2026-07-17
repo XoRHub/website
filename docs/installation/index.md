@@ -81,4 +81,6 @@ see [Volumes](../concepts/volumes.md) for the retention model.
   by default.
 
 Continue with [Configuration](configuration.md) for the values worth
-reviewing before a real deployment.
+reviewing before a real deployment, and
+[What the chart bootstraps](../admin/bootstrap-governance.md) for
+exactly which rights the bootstrap policy and catalogs grant.

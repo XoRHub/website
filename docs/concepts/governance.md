@@ -52,6 +52,10 @@ Two bootstrap policies can be rendered by the Helm chart:
   platform admins — the bypass is a visible, auditable CR, not a code
   path.
 
+The exact rights each one grants (and the catalog entries bootstrapped
+alongside) are detailed in
+[What the chart bootstraps](../admin/bootstrap-governance.md).
+
 Debugging: the admin console (Users page) embeds an
 **effective-policy** view that replays the exact resolution the webhook
 performs — every candidate policy, its match outcome, the winner and

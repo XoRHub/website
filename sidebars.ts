@@ -30,6 +30,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Administration',
+      items: ['admin/bootstrap-governance', 'admin/daily-operations'],
+    },
+    {
+      type: 'category',
       label: 'CRD reference',
       link: {type: 'doc', id: 'reference/crds/index'},
       items: [
