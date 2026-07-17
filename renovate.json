@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Docs site: npm (Docusaurus) deps, GitHub Actions pins, mise toolchain.",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "packageRules": [
+    {
+      "description": "One PR for all GitHub Actions patch/minor/digest bumps, automerged once checks pass.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pinDigest"],
+      "groupName": "github-actions",
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "npm patch/minor bumps automerge after a 10-day cooldown; the deploy build is the gate.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "minimumReleaseAge": "10 days",
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Docusaurus majors grouped, never automerged — review the migration notes.",
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["/^@docusaurus//"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "docusaurus-major",
+      "automerge": false
+    }
+  ]
+}
