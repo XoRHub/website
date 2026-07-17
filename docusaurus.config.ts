@@ -78,10 +78,14 @@ const config: Config = {
   themeConfig: {
     image: 'img/social-card.png',
     navbar: {
-      title: 'WaaS',
+      // The logo is the frontend's own brand wordmark (WAAS), copied
+      // from waas/frontend/public/logos/ — same theme pairing as its
+      // BrandLogo component: black-text variant on light, white-text
+      // in dark. No navbar title: the wordmark already says it.
       logo: {
-        alt: 'WaaS logo',
-        src: 'img/favicon.svg',
+        alt: 'WaaS',
+        src: 'img/logos/logo_white.png',
+        srcDark: 'img/logos/logo_dark.png',
       },
       items: [
         {
