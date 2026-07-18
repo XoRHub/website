@@ -64,6 +64,12 @@ admin edits are not overwritten):
 - **No user RBAC**: users never talk to the Kubernetes API directly —
   everything goes through the portal or your GitOps pipeline.
 
+Namespace metadata is only one of the template's three metadata
+surfaces, each with its own sync model: namespace labels/annotations
+are **create-only** (above), workload metadata converges **by
+rollout**, and home-PVC metadata (`spec.homeVolume`) is **synced in
+place** with removal tracking — see [Volumes](volumes).
+
 Shared namespaces (the built-in default, or `{os}`/`{templateName}`
 patterns) get **neither** an ownership label **nor** an auto
 ResourceQuota — a shared namespace quota would cap the whole team at

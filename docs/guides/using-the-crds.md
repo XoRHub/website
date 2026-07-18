@@ -86,7 +86,8 @@ gitops/
 - [`Workspace`](../reference/crds/workspace) — owner, templateRef,
   paused, resources, overrides, homeVolumeName.
 - [`WorkspaceTemplate`](../reference/crds/workspacetemplate) — image,
-  sizing, protocols, workload, schedule, placement, overrides.
+  sizing, protocols, workload, schedule, placement, homeVolume,
+  overrides.
 - [`WorkspacePolicy`](../reference/crds/workspacepolicy) — subjects,
   priority, limits, lifecycle, clipboard, override rights.
 - [`WorkspaceImage`](../reference/crds/workspaceimage) — image ref,

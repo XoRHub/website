@@ -89,6 +89,10 @@ spec:
   os: linux
   image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1
   homeSize: 20Gi
+  homeVolume:
+    labels:                          # stamped on the home PVC, synced in place
+      recurring-job.longhorn.io/source: enabled
+      recurring-job-group.longhorn.io/backup-daily: enabled
   resources:
     requests: { cpu: 500m, memory: 1Gi }
     limits: { cpu: "2", memory: 4Gi }

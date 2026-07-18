@@ -7,8 +7,10 @@ description: Home volume retention, reuse and storage quotas.
 # Volumes
 
 Every workspace gets a **home volume** — a PVC mounted at the desktop
-user's home directory. It is the only thing that survives pod
-restarts, pauses, image changes… and, by default, workspace deletion.
+user's home directory (default `/home/waas_user`, configurable per
+template via `spec.homeMountPath`). It is the only thing that survives
+pod restarts, pauses, image changes… and, by default, workspace
+deletion.
 
 ## Retention model
 
@@ -58,6 +60,51 @@ spec:
 
 The webhook checks: same owner, volume actually retained, same target
 namespace. The operator then re-labels the volume as live.
+
+## Template metadata on home volumes
+
+A template can stamp labels and annotations on the home PVC via
+`spec.homeVolume`. The driving use case is storage machinery driven by
+PVC labels — e.g. enrolling every home into Longhorn recurring backup
+jobs:
+
+```yaml
+spec:
+  homeVolume:
+    labels:
+      recurring-job.longhorn.io/source: enabled
+      recurring-job-group.longhorn.io/backup-daily: enabled
+```
+
+Size, class and mount path stay where they were — the top-level
+`homeSize`, `storageClassName` and `homeMountPath`.
+
+The sync model is deliberately different from the other metadata
+surfaces (namespace metadata is create-only, workload metadata
+converges by rollout): homeVolume metadata is **synced in place on
+every reconcile**. Editing the template enrolls volumes provisioned
+long ago without touching the workspaces — and since PVC metadata sits
+outside the pod-template fingerprint, enabling a backup never restarts
+a desktop.
+
+Removals propagate too. The operator records the keys it stamped in a
+ledger annotation on the PVC (`waas.xorhub.io/template-meta`); a key
+dropped from the template is removed at the next reconcile, while keys
+an admin set on the PVC by hand are never in the ledger and never
+touched. The usual reserved-domain denylist applies (`kubernetes.io`,
+`xorhub.io`, `argoproj.io`, service-mesh injectors, … — `longhorn.io`
+is deliberately allowed) and operator-owned labels always win.
+
+Retained volumes keep their metadata and ledger — a detached volume
+still holds the user's data, exactly the one worth keeping in the
+backup rotation. It is *not* re-synced while detached (no workspace
+reconciles it); the next adoption converges it against the adopting
+template, removing the old template's ledgered keys and stamping the
+new ones.
+
+This surface is admin-only by design: there is no overridable field
+for it, because PVC labels drive platform machinery (backup, DR), not
+user preference.
 
 ## Quotas
 
