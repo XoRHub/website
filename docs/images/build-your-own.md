@@ -190,6 +190,35 @@ Two things are still admin-side in the platform: the
 run your own curated catalog, and `allowedGroups` gating for `-dev`
 profile images.
 
+### How the template form consumes your `recommended` block
+
+When an admin building a template selects a registry-discovered image
+that carries a `recommended` block, the form shows an **"Apply catalog
+recommendations"** button next to the image field. It is never an
+automatic prefill: nothing is injected on selection, so an admin never
+saves a `securityContext` they didn't consciously see — clicking the
+button also expands the (collapsed by default) workload YAML section
+so the injected values are visible before saving.
+
+The env part of the prefill is **protocol-aware**:
+
+- On a template with no protocols yet, the entry's supported protocols
+  are added first, with their registry default ports. A list mixing
+  `kasmvnc` with guacd protocols keeps only the guacd ones (kasmvnc
+  exclusivity); a template that already has protocols keeps them
+  untouched.
+- Env hints are filtered to those protocols (`env[].protocols`;
+  unscoped = always relevant), plus the `requires` closure — a
+  relevant hint pulls its required siblings into the offer even when
+  their own scope doesn't match.
+- A hint **with a `default`** merges into the template's env by name,
+  never overwriting an entry already present. A hint **without a
+  default** is only *offered* — a greyed suggestion row the admin
+  adopts with a click — so an empty literal never sneaks into the CR
+  and supersedes the operator's own credential injection.
+- `env[].requires` stays purely descriptive server-side: it shapes the
+  offer, it is never validated or enforced.
+
 Notes:
 
 - `core-*` variants never reach the catalog — they are internal build
