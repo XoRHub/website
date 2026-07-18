@@ -51,6 +51,7 @@ const sidebars: SidebarsConfig = {
       items: ['images/build-your-own'],
     },
     'troubleshooting',
+    'accepted-limitations',
   ],
 };
 
