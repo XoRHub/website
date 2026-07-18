@@ -1,7 +1,7 @@
 # Build on every PR; build + deploy to GitHub Pages on push to main.
-# Deployment uses actions/deploy-pages (no gh-pages branch to maintain):
-# configure-pages with enablement: true enables Pages (source "GitHub
-# Actions") automatically on the first deploy — no manual settings step.
+# Deployment uses actions/deploy-pages (no gh-pages branch to maintain).
+# Pages must be enabled once with source "GitHub Actions" (already done
+# for this repo) — no self-enablement step in the workflow.
 name: deploy
 
 on:
@@ -18,11 +18,11 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Toolchain from .mise.toml — the same pins `mise install` uses
       # locally, one source for both (same doctrine as the waas repo).
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
 
       - run: npm ci
       - run: npm run typecheck
@@ -30,7 +30,7 @@ jobs:
       # schemas (npm run gen:crd), then Docusaurus builds every version.
       - run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: build
 
@@ -45,9 +45,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
