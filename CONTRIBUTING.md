@@ -52,8 +52,8 @@ When waas publishes a `vX.Y.Z` tag, freeze the current docs as that
 version. **Nominal path**: run the
 [`version-cut` workflow](.github/workflows/version-cut.yml)
 (Actions → version-cut → Run workflow → enter the tag). It syncs the
-schemas at the tag, runs `docusaurus docs:version vX.Y.Z` and opens a
-PR to review.
+schemas at the tag, runs `docusaurus docs:version vX.Y.Z`, prunes the
+previous snapshot and opens a PR to review.
 
 The equivalent by hand:
 
@@ -61,6 +61,8 @@ The equivalent by hand:
 node scripts/sync-crd-schemas.mjs --ref vX.Y.Z
 npm run gen:crd
 npm run docusaurus docs:version vX.Y.Z
+# prune the previous release: remove its versioned_docs/version-<old>/
+# and versioned_sidebars/ entry, leave only vX.Y.Z in versions.json
 npm run build
 # commit docs/-generated versioned_docs/, versioned_sidebars/, versions.json,
 # crd-schemas/ — "docs: cut version vX.Y.Z"
@@ -71,8 +73,9 @@ The workflow also listens to `repository_dispatch` (type
 automatically later; until that wiring exists, the manual dispatch
 above **is** the documented procedure.
 
-Keep the version dropdown short: Docusaurus serves every entry in
-`versions.json`; prune very old versions when they stop being useful.
+Site policy: only **the latest release + Next** are served. The cut
+prunes every older snapshot (their `/vX.Y.Z/` URLs stop existing);
+git history keeps them if one ever needs resurrecting.
 
 ## Commits
 
