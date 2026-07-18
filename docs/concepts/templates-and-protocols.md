@@ -127,7 +127,10 @@ spec:
 
 Merge semantics: env/volumes/mounts merge by name (workspace wins),
 nodeSelector merges key-wise, tolerations append, security contexts
-replace.
+replace. Metadata (`labels`/`annotations`) merges **under** the
+template's workload metadata — platform and template keys always win,
+reserved domains are rejected. A schedule override replaces the
+template's schedule wholesale.
 
 On top of the template's list, the user's
 [**policy**](governance#override-restriction) may restrict further —
@@ -144,7 +147,12 @@ groups.
 In the portal, users who hold override rights see an **Advanced
 (template overrides)** panel in the creation dialog; everyone else
 never sees it. The panel mirrors the webhook's decision — it never
-replaces it.
+replaces it. Part of the set is also editable **after** creation, from
+the workspace's settings tab: env, nodeSelector, tolerations,
+resources, metadata and schedule (applied by rollout — clearing one
+falls back to the template). Security contexts and volumes stay
+creation-time-only — see
+[Accepted limitations](../accepted-limitations).
 
 ## Protocol × feature matrix
 

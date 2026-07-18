@@ -71,7 +71,9 @@ spec:
 - Scheduled downtime uses the pause mechanism; the phase reads
   `Stopped` (scheduled) rather than `Paused` (manual).
 - Like any template option, the schedule can be delegated to workspace
-  creators via `overrides.allowedFields: [schedule]`.
+  creators via `overrides.allowedFields: [schedule]` — settable at
+  creation **and editable at runtime** from the workspace settings tab
+  (a cleared override falls back to the template's schedule).
 - `status.nextTransition` carries the next change; the portal card
   shows it ("⏰ next stop …").
 
