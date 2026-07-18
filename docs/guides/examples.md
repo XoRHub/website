@@ -183,7 +183,8 @@ spec:
       name: data-team               # IdP group (OIDC groups claim)
   images: [ubuntu-desktop-noble, devtools]
   limits:
-    maxWorkspaces: 5
+    maxWorkspaces: 5                # ownership — paused workspaces count
+    maxRunningWorkspaces: 2         # compute concurrency — paused ones don't; pausing frees a slot
     perWorkspace: { cpu: "4", memory: 8Gi, home: 50Gi }
     aggregate: { cpu: "8", memory: 16Gi, storage: 200Gi }
   lifecycle:

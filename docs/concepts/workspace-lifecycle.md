@@ -41,8 +41,18 @@ with the children's events in the workspace's Events panel.
 ## Pause = scale to 0, not delete
 
 Pausing a workspace scales its workload to 0 replicas — it does **not**
-delete anything. Resume is a scale back to 1: fast, no reconstruction,
-no re-admission. The home volume is retained in every case.
+delete anything. Resume is a scale back to 1: fast, no reconstruction.
+The home volume is retained in every case.
+
+Pausing is always allowed (it only frees compute), but **resuming is a
+governed transition**: it re-runs the admission check, and when the
+policy sets
+[`limits.maxRunningWorkspaces`](governance.md#two-workspace-quotas-ownership-vs-concurrency)
+a resume can be denied with `[QuotaExceeded] … running workspace quota
+reached (N/N); pause a workspace to free a slot`. The portal shows the
+denial on the workspace card; freeing a slot (pause or delete another
+workspace) unblocks it. The flip side: a workspace can be **created
+paused** and take no running slot until its first resume.
 
 - **Deployment / StatefulSet**: `spec.replicas` patched 0 ⇄ 1 in place.
 - **Bare Pod** (legacy workload kind): deleted on pause, recreated from

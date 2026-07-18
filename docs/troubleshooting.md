@@ -27,7 +27,7 @@ HTTP 403, the `Ready` condition and the portal alike.
 | `ImageNotAllowed` | `allowedGroups` or the policy's image subset excludes you | check the policy's `images` and the image's `allowedGroups` |
 | `ProtocolMismatch` | template declares a protocol the image doesn't serve | align `protocols` with the `WorkspaceImage.protocols` |
 | `ResourcesOutOfBounds` | sizing outside image min/max or policy caps | pick a size within bounds |
-| `QuotaExceeded` | count or aggregate over the policy limit | delete/pause something, or raise the policy |
+| `QuotaExceeded` | count, running count or aggregate over the policy limit | delete/pause something, or raise the policy. "running workspace quota reached" also denies **resume** — expected with `maxRunningWorkspaces`, pausing another workspace frees the slot (or create the workspace paused) |
 | `IdentityViolation` | `spec.owner` ≠ your authenticated user, or forged identity annotations | set `owner` to your own username; never set `waas.xorhub.io/*` identity annotations |
 | `OverrideNotAllowed` | an override field is not delegated to you | template ∩ policy `overrides.allowedFields` must contain the field |
 

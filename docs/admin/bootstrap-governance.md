@@ -29,7 +29,8 @@ may:
 
 | Right | Default value |
 |---|---|
-| Concurrent workspaces | **3** |
+| Workspaces owned (`maxWorkspaces`, paused included) | **3** |
+| Workspaces running at once (`maxRunningWorkspaces`) | **unlimited** — the chart default is `null`, and null limits are omitted from the rendered policy |
 | Per-workspace caps | 1 CPU, 1 Gi memory, 5 Gi home volume |
 | Aggregate caps (all their workspaces + retained volumes) | 2 CPU, 3 Gi memory, 15 Gi storage |
 | Images | the **whole enabled catalog** (`images: []`) — i.e. every `docker.io/xorhub` image, see below |

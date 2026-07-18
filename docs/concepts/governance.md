@@ -28,8 +28,8 @@ flowchart TB
   default/min/max sizing.
 - **[`WorkspacePolicy`](../reference/crds/workspacepolicy)**: priority,
   subjects (`User`/`Group`), image subset, limits (`maxWorkspaces`,
-  `perWorkspace`, `aggregate`), lifecycle (`idleSuspendAfter`,
-  `maxLifetime`), clipboard rules, override rights.
+  `maxRunningWorkspaces`, `perWorkspace`, `aggregate`), lifecycle
+  (`idleSuspendAfter`, `maxLifetime`), clipboard rules, override rights.
 - A user's **effective images** = enabled catalog ∩ policy `images` ∩
   `allowedGroups` match. The same function feeds the webhook, the
   reconciler and the portal — they cannot disagree.
@@ -91,6 +91,37 @@ Notable properties:
 - **Identity is trusted, not declared**: with kubectl, `spec.owner`
   must equal your authenticated username, and it is immutable
   afterward. Spoofing another owner is denied (`IdentityViolation`).
+
+## Two workspace quotas: ownership vs concurrency
+
+The policy has two independent per-user counts:
+
+- **`maxWorkspaces` caps ownership** — how many workspaces a user may
+  *have*. Paused workspaces count: their home PVC still holds storage.
+- **`maxRunningWorkspaces` caps compute concurrency** — how many may be
+  *running* at once. Paused workspaces and retained volumes do **not**
+  count: pausing frees a slot, resuming re-acquires one.
+
+The running quota guards the two transitions **into** compute —
+creating a non-paused workspace and resuming a paused one. When the
+slots are full the webhook denies with
+
+```
+[QuotaExceeded] policy "…": running workspace quota reached (2/2); pause a workspace to free a slot
+```
+
+surfaced as usual (kubectl error, HTTP 403, `Ready` condition, portal
+card). A denied resume is working as designed — pause or delete another
+workspace to free the slot.
+
+Because only the *running* state is capped, a workspace can be
+**created paused** (`spec.paused: true` at creation, or the portal's
+"create paused" choice when your slots are full): it exists, owns its
+home volume, counts toward `maxWorkspaces` — but takes no running slot
+until its first resume, which runs the full admission check.
+
+Either field absent means unlimited on that axis. The portal banner
+shows both counters (`used/max` workspaces and running).
 
 ## Clipboard policy
 
