@@ -1,6 +1,7 @@
 # Build on every PR; build + deploy to GitHub Pages on push to main.
 # Deployment uses actions/deploy-pages (no gh-pages branch to maintain):
-# enable Pages with source "GitHub Actions" in the repo settings once.
+# configure-pages with enablement: true enables Pages (source "GitHub
+# Actions") automatically on the first deploy — no manual settings step.
 name: deploy
 
 on:
@@ -44,5 +45,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
       - id: deployment
         uses: actions/deploy-pages@v4
