@@ -8,10 +8,14 @@
  * waas release, refresh the schemas first:
  *   node scripts/sync-crd-schemas.mjs --ref vX.Y.Z
  *
- * Rendering model: one H2 section per top-level `spec` field (plus one
- * for `status` when present), each with a flat table of every nested
- * field — path, type, required, description. The JSON Schemas carry
- * per-field descriptions straight from the Go API types, used verbatim.
+ * Rendering model: each page is ONE annotated YAML manifest. The
+ * schema tree is compiled here into a JSON tree
+ * (docs/reference/crds/_data/<kind>.json) that the CrdYaml React
+ * component (src/components/CrdYaml) renders as YAML — every field a
+ * key with its Go API doc comment as `#` lines above it, every nested
+ * object a fold the reader can open or collapse. The per-field
+ * descriptions are the JSON Schemas' own, verbatim (same text as
+ * `kubectl explain`).
  */
 import {readFileSync, mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
@@ -20,30 +24,18 @@ const GROUP = 'waas.xorhub.io';
 const API_VERSION = `${GROUP}/v1alpha1`;
 const SCHEMA_DIR = join('crd-schemas', GROUP);
 const OUT_DIR = join('docs', 'reference', 'crds');
+const DATA_DIR = join(OUT_DIR, '_data');
 
 const CRDS = [
-  {file: 'workspace_v1alpha1.json', kind: 'Workspace', position: 2},
-  {file: 'workspacetemplate_v1alpha1.json', kind: 'WorkspaceTemplate', position: 3},
-  {file: 'workspacepolicy_v1alpha1.json', kind: 'WorkspacePolicy', position: 4},
-  {file: 'workspaceimage_v1alpha1.json', kind: 'WorkspaceImage', position: 5},
+  {file: 'workspace_v1alpha1.json', kind: 'Workspace', short: 'ws', plural: 'workspaces', position: 2, openDepth: 2},
+  {file: 'workspacetemplate_v1alpha1.json', kind: 'WorkspaceTemplate', short: 'wst', plural: 'workspacetemplates', position: 3, openDepth: 2},
+  {file: 'workspacepolicy_v1alpha1.json', kind: 'WorkspacePolicy', short: 'wsp', plural: 'workspacepolicies', position: 4, openDepth: 99},
+  {file: 'workspaceimage_v1alpha1.json', kind: 'WorkspaceImage', short: 'wsi', plural: 'workspaceimages', position: 5, openDepth: 99},
 ];
 
 const waasRef = readFileSync(join('crd-schemas', 'WAAS_REF'), 'utf8').trim();
 
-/** Escape text for an MDX table cell (MDX parses {}, <>, and | ends the cell). */
-function esc(text) {
-  return String(text)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('{', '&#123;')
-    .replaceAll('}', '&#125;')
-    .replaceAll('|', '\\|')
-    .replaceAll(/\r?\n+/g, ' ')
-    .trim();
-}
-
-/** Escape prose blocks (outside tables): only MDX-hostile characters. */
+/** Escape prose blocks for MDX: only MDX-hostile characters. */
 function prose(text) {
   return String(text)
     .replaceAll('&', '&amp;')
@@ -53,140 +45,154 @@ function prose(text) {
     .replaceAll('}', '&#125;');
 }
 
-/** Human-readable type of a schema node. */
-function typeOf(schema) {
-  if (schema['x-kubernetes-int-or-string']) return 'int-or-string';
-  if (schema['x-kubernetes-preserve-unknown-fields'] && !schema.type) return 'any';
-  const t = schema.type;
-  if (t === 'array') {
-    return `[]${typeOf(schema.items ?? {})}`;
+/** The k8s resource.Quantity pattern — too noisy to print, so it
+ * becomes the <quantity> placeholder instead. */
+function isQuantity(schema) {
+  return (
+    schema['x-kubernetes-int-or-string'] &&
+    typeof schema.pattern === 'string' &&
+    schema.pattern.startsWith('^(\\+|-)?')
+  );
+}
+
+/** Type placeholder shown as the YAML value. */
+function placeholder(schema) {
+  if (schema.enum) return schema.enum.join(' | ');
+  if (isQuantity(schema)) return '<quantity>';
+  if (schema['x-kubernetes-int-or-string']) return '<int-or-string>';
+  if (schema['x-kubernetes-preserve-unknown-fields'] && !schema.type) return '<any>';
+  switch (schema.type) {
+    case 'string':
+      if (schema.format === 'date-time') return '<timestamp>';
+      return schema.format ? `<${schema.format}>` : '<string>';
+    case 'integer':
+      return `<${schema.format ?? 'integer'}>`;
+    case 'number':
+      return '<number>';
+    case 'boolean':
+      return '<boolean>';
+    default:
+      return '<value>';
   }
-  if (t === 'object') {
-    if (schema.additionalProperties && !schema.properties) {
-      return `map[string]${typeOf(schema.additionalProperties)}`;
+}
+
+/** Trailing "# required · min: 0" facts on the key line. Enum values
+ * live in the placeholder, the quantity pattern is dropped on purpose. */
+function facts(schema, required) {
+  const f = [];
+  if (required) f.push('required');
+  if (schema.default !== undefined) f.push(`default: ${JSON.stringify(schema.default)}`);
+  if (schema.minimum !== undefined) f.push(`min: ${schema.minimum}`);
+  if (schema.maximum !== undefined) f.push(`max: ${schema.maximum}`);
+  if (schema.minLength !== undefined) f.push(`minLength: ${schema.minLength}`);
+  if (schema.maxLength !== undefined) f.push(`maxLength: ${schema.maxLength}`);
+  if (schema.pattern && !isQuantity(schema)) f.push(`pattern: ${schema.pattern}`);
+  return f.join(' · ') || null;
+}
+
+/** Number of rendered lines a fold would hide — folds with almost
+ * nothing inside are plain nested keys instead. */
+function weight(node) {
+  if (!node.children) return 1;
+  return 1 + node.children.reduce((n, c) => n + weight(c), 0);
+}
+
+const isObject = (s) =>
+  s && (s.type === 'object' || s.properties) && !(s.additionalProperties && !s.properties);
+const isMap = (s) => s && s.type === 'object' && s.additionalProperties && !s.properties;
+
+/** Compile one schema node into a CrdYaml tree node. */
+function build(key, schema, required) {
+  const base = {
+    key,
+    comment: schema.description?.trim() || null,
+    facts: facts(schema, required),
+  };
+
+  if (schema.type === 'array') {
+    const items = schema.items ?? {};
+    if (isObject(items) || isMap(items)) {
+      return finishFold({
+        ...base,
+        kind: 'node',
+        hint: '[…]',
+        children: [{kind: 'item', children: fields(items)}],
+      });
     }
-    return 'object';
+    // Array of scalars: "key:" then a single "- <type>" line.
+    return {
+      ...base,
+      kind: 'node',
+      fold: false,
+      children: [{kind: 'leaf', key: null, dash: true, value: placeholder(items)}],
+    };
   }
-  if (!t) return 'object';
-  return schema.format ? `${t} (${schema.format})` : t;
+
+  if (isMap(schema)) {
+    const ap = schema.additionalProperties;
+    if (typeof ap === 'object' && (isObject(ap) || ap.type === 'array')) {
+      return finishFold({
+        ...base,
+        kind: 'node',
+        hint: '{…}',
+        children: [{kind: 'node', key: '<key>', synthetic: true, fold: false, children: fields(ap)}],
+      });
+    }
+    // map[string]scalar
+    return {
+      ...base,
+      kind: 'node',
+      fold: false,
+      children: [
+        {
+          kind: 'leaf',
+          key: '<key>',
+          synthetic: true,
+          value: typeof ap === 'object' ? placeholder(ap) : '<any>',
+        },
+      ],
+    };
+  }
+
+  if (isObject(schema)) {
+    const children = fields(schema);
+    if (children.length === 0) return {...base, kind: 'leaf', value: '<object>'};
+    return finishFold({...base, kind: 'node', hint: '{…}', children});
+  }
+
+  const leaf = {...base, kind: 'leaf', value: placeholder(schema)};
+  // Enums and defaults read as real YAML values, not placeholders.
+  if (schema.enum) leaf.literal = true;
+  return leaf;
 }
 
-/** Extra facts worth surfacing next to the description. */
-function annotations(schema, required) {
-  const notes = [];
-  if (required) notes.push('**Required.**');
-  if (schema.enum) notes.push(`Allowed values: ${schema.enum.map((v) => `\`${v}\``).join(', ')}.`);
-  if (schema.default !== undefined) notes.push(`Default: \`${JSON.stringify(schema.default)}\`.`);
-  if (schema.pattern) notes.push(`Pattern: \`${schema.pattern}\`.`);
-  if (schema.minimum !== undefined) notes.push(`Minimum: \`${schema.minimum}\`.`);
-  if (schema.maximum !== undefined) notes.push(`Maximum: \`${schema.maximum}\`.`);
-  return notes;
+function finishFold(node) {
+  node.fold = weight(node) > 4;
+  return node;
 }
 
-/** Recursively flatten a schema subtree into table rows. */
-function rows(schema, path, requiredSet, depth, out) {
+function fields(schema) {
   const props = schema.properties ?? {};
-  for (const name of Object.keys(props)) {
-    const child = props[name];
-    const childPath = path ? `${path}.${name}` : name;
-    const required = requiredSet.has(name);
-    const notes = annotations(child, required);
-    // Enum values already say everything a description would.
-    const desc = [esc(child.description ?? ''), ...notes.map(esc)].filter(Boolean).join(' ');
-    out.push({path: childPath, depth, type: typeOf(child), desc});
-    descend(child, childPath, depth + 1, out);
-  }
+  const requiredSet = new Set(schema.required ?? []);
+  return Object.keys(props).map((k) => build(k, props[k], requiredSet.has(k)));
 }
 
-function descend(schema, path, depth, out) {
-  if (schema.type === 'array' && schema.items) {
-    rows(schema.items, `${path}[]`, new Set(schema.items.required ?? []), depth, out);
-  } else if (schema.type === 'object' || schema.properties) {
-    if (schema.properties) {
-      rows(schema, path, new Set(schema.required ?? []), depth, out);
-    } else if (
-      schema.additionalProperties &&
-      typeof schema.additionalProperties === 'object' &&
-      schema.additionalProperties.properties
-    ) {
-      rows(
-        schema.additionalProperties,
-        `${path}{...}`,
-        new Set(schema.additionalProperties.required ?? []),
-        depth,
-        out,
-      );
-    }
-  }
-}
-
-function table(allRows) {
-  const lines = ['| Field | Type | Description |', '| --- | --- | --- |'];
-  for (const r of allRows) {
-    // Indent nested paths with figure spaces so the hierarchy stays
-    // visible without repeating the full dotted path on every row.
-    const short = r.path.split('.').at(-1);
-    const indent = '&numsp;'.repeat(Math.min(r.depth, 8) * 2);
-    lines.push(`| <span className="crd-field-path">${indent}\`${short}\`</span> | ${r.type} | ${r.desc} |`);
-  }
-  return lines.join('\n');
-}
-
-function page({kind, file, position}) {
+function compile({kind, file, short}) {
   const schema = JSON.parse(readFileSync(join(SCHEMA_DIR, file), 'utf8'));
   const spec = schema.properties?.spec ?? {};
   const status = schema.properties?.status;
-  const specRequired = new Set(spec.required ?? []);
-
-  let body = '';
-  body += `# ${kind}\n\n`;
-  body += `${prose(schema.description ?? '')}\n\n`;
-  body += `| | |\n| --- | --- |\n| **apiVersion** | \`${API_VERSION}\` |\n| **kind** | \`${kind}\` |\n\n`;
-  body += `## spec\n\n`;
-  if (spec.description) body += `${prose(spec.description)}\n\n`;
-
-  // One section per top-level spec field: the big passthrough subtrees
-  // (workload, overrides, …) each get their own anchor and table.
-  const props = spec.properties ?? {};
-  const flat = [];
-  const complex = [];
-  for (const name of Object.keys(props)) {
-    const child = props[name];
-    const sub = [];
-    descend(child, `spec.${name}`, 1, sub);
-    if (sub.length === 0) {
-      const notes = annotations(child, specRequired.has(name));
-      flat.push({
-        path: `spec.${name}`,
-        depth: 0,
-        type: typeOf(child),
-        desc: [esc(child.description ?? ''), ...notes.map(esc)].filter(Boolean).join(' '),
-      });
-    } else {
-      complex.push({name, child, sub});
-    }
-  }
-  if (flat.length) {
-    body += table(flat) + '\n\n';
-  }
-  for (const {name, child, sub} of complex) {
-    body += `### spec.${name}\n\n`;
-    if (child.description) body += `${prose(child.description)}\n\n`;
-    const notes = annotations(child, specRequired.has(name));
-    if (notes.length) body += notes.join(' ') + '\n\n';
-    const head = [{path: `spec.${name}`, depth: 0, type: typeOf(child), desc: ''}];
-    body += table(head.concat(sub)) + '\n\n';
-  }
-
+  const data = {
+    spec: {...build('spec', spec, false), fold: true, hint: '{…}'},
+  };
   if (status?.properties) {
-    body += `## status\n\n`;
-    if (status.description) body += `${prose(status.description)}\n\n`;
-    const sub = [];
-    rows(status, 'status', new Set(status.required ?? []), 0, sub);
-    body += table(sub) + '\n\n';
+    data.status = {...build('status', status, false), fold: true, hint: '{…}'};
   }
+  return {schema, data};
+}
 
-  const frontmatter = [
+function page({kind, file, short, plural, position, openDepth}, schema, hasStatus) {
+  const dataFile = `${kind.toLowerCase()}.json`;
+  const lines = [
     '---',
     `title: ${kind}`,
     `description: "${kind} CRD reference (${API_VERSION}), generated from the waas JSON Schemas."`,
@@ -196,18 +202,47 @@ function page({kind, file, position}) {
     `{/* GENERATED by scripts/generate-crd-docs.mjs from crd-schemas/${GROUP}/${file}`,
     `    (waas@${waasRef}) — DO NOT EDIT. Refresh: scripts/sync-crd-schemas.mjs */}`,
     '',
+    `import CrdYaml from '@site/src/components/CrdYaml';`,
+    `import tree from './_data/${dataFile}';`,
+    '',
     `:::info Generated reference`,
     `This page is generated at build time from the [\`crd-schemas\`](https://github.com/XoRHub/waas/tree/main/crd-schemas) JSON Schemas published by the waas repository, vendored at ref \`${waasRef}\`.`,
     `:::`,
     '',
-  ].join('\n');
-
-  return frontmatter + body;
+    `# ${kind}`,
+    '',
+    prose(schema.description ?? ''),
+    '',
+    `Namespaced · \`kubectl get ${plural}\`, short name \`${short}\`.`,
+    '',
+    'Every field of the manifest below carries its API documentation as',
+    'YAML comments — the same text `kubectl explain` shows. Click a key',
+    'to fold or unfold its subtree; `# required` and defaults are noted',
+    'on the field line itself.',
+    '',
+    '## spec',
+    '',
+    `<CrdYaml tree={tree.spec} header={{apiVersion: '${API_VERSION}', kind: '${kind}'}} openDepth={${openDepth}} />`,
+    '',
+  ];
+  if (hasStatus) {
+    lines.push(
+      '## status',
+      '',
+      'Reported by the operator — read it, never write it.',
+      '',
+      `<CrdYaml tree={tree.status} openDepth={${openDepth}} />`,
+      '',
+    );
+  }
+  return lines.join('\n');
 }
 
-mkdirSync(OUT_DIR, {recursive: true});
+mkdirSync(DATA_DIR, {recursive: true});
 for (const crd of CRDS) {
+  const {schema, data} = compile(crd);
+  writeFileSync(join(DATA_DIR, `${crd.kind.toLowerCase()}.json`), JSON.stringify(data, null, 1));
   const out = join(OUT_DIR, `${crd.kind.toLowerCase()}.mdx`);
-  writeFileSync(out, page(crd));
+  writeFileSync(out, page(crd, schema, Boolean(data.status)));
   console.log(`generated ${out}`);
 }

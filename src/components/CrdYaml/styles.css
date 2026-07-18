@@ -1,0 +1,134 @@
+/* CrdYaml — annotated, foldable YAML rendering of a CRD schema. */
+
+.crdy {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.crdy-toolbar {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  display: flex;
+  gap: 0.4rem;
+  z-index: 1;
+}
+
+.crdy-toolbar button {
+  font-size: 0.72rem;
+  font-family: var(--ifm-font-family-base);
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-emphasis-700);
+  cursor: pointer;
+}
+
+.crdy-toolbar button:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.crdy-pre {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  padding: 1rem 1rem 1rem 0.4rem;
+  margin: 0;
+  overflow-x: auto;
+}
+
+/* Every rendered line. --d is the YAML nesting depth (2 spaces per
+   level); the 2.2ch base leaves a gutter for the fold carets. */
+.crdy-line {
+  position: relative;
+  padding-left: calc(2.2ch + var(--d, 0) * 2ch);
+  white-space: pre-wrap;
+}
+
+/* Hanging indent: wrapped comment lines align after the "# ". */
+.crdy-comment {
+  padding-left: calc(2.2ch + var(--d, 0) * 2ch + 2ch);
+  text-indent: -2ch;
+  color: var(--crdy-comment);
+}
+
+.crdy-key {
+  color: var(--crdy-key);
+}
+
+/* Synthetic keys (<key> in maps) and type placeholders. */
+.crdy-synth,
+.crdy-val {
+  color: var(--crdy-placeholder);
+  font-style: italic;
+}
+
+/* Literal values: enums, defaults, apiVersion/kind. */
+.crdy-lit {
+  color: var(--crdy-literal);
+}
+
+/* Trailing "# required · min: 0" facts. */
+.crdy-facts {
+  color: var(--crdy-facts);
+}
+
+/* Folding */
+.crdy-details {
+  display: block;
+}
+
+.crdy-summary {
+  cursor: pointer;
+  list-style: none;
+  display: block;
+}
+
+.crdy-summary::-webkit-details-marker {
+  display: none;
+}
+
+.crdy-summary::before {
+  content: '▸';
+  position: absolute;
+  left: calc(0.1ch + var(--d, 0) * 2ch);
+  color: var(--ifm-color-primary);
+  font-size: 0.85em;
+  line-height: inherit;
+}
+
+.crdy-details[open] > .crdy-summary::before {
+  content: '▾';
+}
+
+.crdy-summary:hover .crdy-key {
+  text-decoration: underline;
+}
+
+/* "{…}" / "[…]" hint, shown only while collapsed. */
+.crdy-more {
+  color: var(--ifm-color-emphasis-500);
+}
+
+.crdy-details[open] > .crdy-summary .crdy-more {
+  display: none;
+}
+
+/* Palette */
+:root {
+  --crdy-comment: #57746a;
+  --crdy-key: #0550ae;
+  --crdy-placeholder: #82858a;
+  --crdy-literal: #0a3069;
+  --crdy-facts: #9a6700;
+}
+
+[data-theme='dark'] {
+  --crdy-comment: #7d9b8f;
+  --crdy-key: #79c0ff;
+  --crdy-placeholder: #8b949e;
+  --crdy-literal: #a5d6ff;
+  --crdy-facts: #d29922;
+}

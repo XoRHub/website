@@ -11,8 +11,8 @@ Field-by-field reference for the four CRDs of the
 
 | Kind | Short name | Purpose |
 |---|---|---|
-| [Workspace](workspace.mdx) | — | One user's desktop instance |
-| [WorkspaceTemplate](workspacetemplate.mdx) | — | The shape of a desktop |
+| [Workspace](workspace.mdx) | `ws` | One user's desktop instance |
+| [WorkspaceTemplate](workspacetemplate.mdx) | `wst` | The shape of a desktop |
 | [WorkspacePolicy](workspacepolicy.mdx) | `wsp` | Self-service envelope per user/group |
 | [WorkspaceImage](workspaceimage.mdx) | `wsi` | Approved catalog entry |
 
@@ -29,11 +29,18 @@ documented in the site's
 [CONTRIBUTING](https://github.com/XoRHub/website/blob/main/CONTRIBUTING.md).
 :::
 
-Conventions used in the tables:
+Each page shows the CRD as **one annotated YAML manifest**:
 
-- Nested fields are indented under their parent; `[]` marks "each
-  element of this list", `map[string]T` a free-keyed map.
-- **Required.** flags fields their parent requires; everything else is
-  optional.
-- Descriptions are verbatim from the API types — they are the same text
-  `kubectl explain` shows.
+- Every field is a real YAML key, with its API documentation as `#`
+  comments right above it — the same text `kubectl explain` shows,
+  verbatim from the Go API types.
+- Values are type placeholders: `<string>`, `<int32>`, `<boolean>`,
+  `<quantity>` (a Kubernetes quantity such as `2`, `500m` or `4Gi`).
+  Enums are spelled out in place (`User | Group`).
+- Constraints ride on the field line as a trailing comment:
+  `# required · min: 0 · default: false`.
+- Nested objects fold like folders — click a key (▸) to open or close
+  its subtree, or use the **Expand all / Collapse all** buttons. A
+  collapsed key shows `{…}` / `[…]`.
+- In lists, the `-` line marks one example element; `<key>` marks the
+  free keys of a map.
