@@ -34,7 +34,8 @@ exclusively through the wwt proxy after JWT validation.
 ## Authentication (OIDC SSO)
 
 Local accounts work out of the box (bootstrap `admin` +
-admin-created users). For SSO:
+admin-created users). For SSO (worked end-to-end example:
+[SSO with Authentik](oidc-authentik.md)):
 
 ```yaml
 apiServer:

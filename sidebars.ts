@@ -8,7 +8,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Installation',
       link: {type: 'doc', id: 'installation/index'},
-      items: ['installation/configuration', 'installation/try-locally'],
+      items: ['installation/configuration', 'installation/oidc-authentik', 'installation/try-locally'],
     },
     {
       type: 'category',

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 title: Try WaaS locally
 description: Spin up a throwaway k3d cluster with WaaS fully deployed, in one command.
 ---
