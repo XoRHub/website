@@ -77,8 +77,8 @@ see [Volumes](../concepts/volumes.md) for the retention model.
 - The **waas-images catalog** (`catalogs.waasImages`, on by default):
   approves the official `docker.io/xorhub` desktop images so the
   workspace picker is not empty on day one. `catalogs.kasm` (upstream
-  `docker.io/kasmweb` images, KasmVNC protocol) exists too but is off
-  by default.
+  `docker.io/kasmweb` images, experimental KasmVNC protocol — may be
+  removed at any time) exists too but is off by default.
 
 Continue with [Configuration](configuration.md) for the values worth
 reviewing before a real deployment, and

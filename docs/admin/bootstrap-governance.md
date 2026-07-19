@@ -92,7 +92,9 @@ refs, digests pinned).
 
 `catalogs.kasm` (off by default) is the same idea for the upstream
 `docker.io/kasmweb` images over the **KasmVNC** protocol — an extra
-data plane an admin opts into deliberately.
+data plane an admin opts into deliberately. Note that KasmVNC support
+is [experimental](../concepts/templates-and-protocols.md#protocols)
+and may be removed at any time.
 
 ## Handing over to GitOps
 

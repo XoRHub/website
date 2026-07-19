@@ -56,6 +56,13 @@ spec:
 - `vnc`, `rdp` and `ssh` are freely combinable on one template.
   **`kasmvnc` is exclusive**: it bypasses guacd entirely, so a template
   declaring it may declare no other protocol.
+
+:::warning KasmVNC is experimental
+The `kasmvnc` protocol is at an **experimental** stage. It may change
+incompatibly or be **removed at any time**, without a deprecation
+cycle. Don't build production templates on it — prefer `vnc`, `rdp` or
+`ssh`.
+:::
 - With no `protocols` at all, one is synthesized from `os`/`port`
   (linux → `vnc:5901`, windows → `rdp:3389`).
 - Every `params` key is validated at admission against the platform's
@@ -156,7 +163,7 @@ creation-time-only — see
 
 ## Protocol × feature matrix
 
-| Feature | VNC | RDP | SSH | KasmVNC |
+| Feature | VNC | RDP | SSH | KasmVNC (experimental) |
 |---|---|---|---|---|
 | Audio playback | ✅ (`enable-audio` + `exposeAudioPort`) | ⚙️ param exists; official images ship no RDP audio chain | N/A | ❌ |
 | Governed clipboard | ✅ live | ✅ live, text only | ✅ live | ✅ container-side |

@@ -97,7 +97,7 @@ adminPolicy:
   enabled: false         # explicit all-rights policy for admins (off by default)
 catalogs:
   waasImages: { enabled: true }    # official XorHub images (docker.io/xorhub)
-  kasm: { enabled: false }         # upstream kasmweb images (KasmVNC)
+  kasm: { enabled: false }         # upstream kasmweb images (KasmVNC — experimental)
 ```
 
 Doctrine: these bootstrap CRs exist so a fresh install works without a
