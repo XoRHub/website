@@ -18,8 +18,9 @@ instead, or [try WaaS on a local k3d cluster](installation/try-locally).
 - [cert-manager](https://cert-manager.io/docs/installation/) installed —
   the **only** external prerequisite (it issues the admission webhook and
   ingress certificates).
-- Optional: KubeVirt, only if you want Windows workspaces. It is
-  auto-detected — nothing to configure.
+- Optional: KubeVirt, only if you want Windows workspaces
+  (**Not Implemented Yet**). It is auto-detected — nothing to
+  configure.
 
 ## 1. Install the chart
 

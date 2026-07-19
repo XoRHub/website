@@ -16,7 +16,7 @@ PostgreSQL.
 |---|---|
 | Kubernetes `>= 1.26` | chart requirement |
 | [cert-manager](https://cert-manager.io/docs/installation/) | issues the admission-webhook certificate and (optionally) the ingress TLS certificate. The **only** hard prerequisite. |
-| KubeVirt (optional) | Windows workspaces only. Auto-detected at runtime — a Linux-only install needs nothing. |
+| KubeVirt (optional) | Windows workspaces only (**Not Implemented Yet**). Auto-detected at runtime — a Linux-only install needs nothing. |
 | A default StorageClass | home volumes (PVCs) and the bundled PostgreSQL |
 
 ## Install

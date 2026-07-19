@@ -58,8 +58,8 @@ paused** and take no running slot until its first resume.
 - **Bare Pod** (legacy workload kind): deleted on pause, recreated from
   the same home PVC on resume — equivalent for the user, state lives on
   the PVC.
-- **Windows / KubeVirt VM**: `spec.running` toggled; the VM object and
-  its disks are kept.
+- **Windows / KubeVirt VM** (**Not Implemented Yet**): `spec.running`
+  toggled; the VM object and its disks are kept.
 
 While paused, `status.address/port/protocol` are cleared and `Ready` is
 `False` with reason `Paused`.

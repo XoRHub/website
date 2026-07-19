@@ -15,7 +15,7 @@ desktop, accessible from any browser:
 - **Linux desktops** run as pods and are reached over VNC (with RDP and
   SSH as additional protocols when the image supports them);
 - **Windows desktops** run as KubeVirt VMs and are reached over RDP —
-  KubeVirt is auto-detected, never required.
+  KubeVirt is auto-detected, never required. (**Not Implemented Yet**)
 
 ![Placeholder — WaaS portal listing a user's workspaces](/img/placeholders/dashboard.png)
 
@@ -47,7 +47,7 @@ flowchart LR
     A --> P[(PostgreSQL<br/>users, quotas,<br/>sessions, audit)]
     A -->|CRDs only| K[Kubernetes API]
     K --> O[Operator]
-    O --> W[Pod — Linux, VNC<br/>VM via KubeVirt — Windows, RDP]
+    O --> W[Pod — Linux, VNC<br/>VM via KubeVirt — Windows, RDP<br/><i>Not Implemented Yet</i>]
     B -->|WebSocket| X[wwt proxy]
     X -->|JWT validated first| G[guacd<br/>ClusterIP only]
     G --> W
@@ -63,7 +63,8 @@ What each piece does, from an operator's point of view:
   accounts and OIDC SSO), RBAC, quotas, audit. It creates workspaces
   **only through the CRDs** — never pods directly.
 - The **operator** reconciles `Workspace`/`WorkspaceTemplate` resources
-  into Deployments, Services and PVCs (Linux) or KubeVirt VMs (Windows).
+  into Deployments, Services and PVCs (Linux) or KubeVirt VMs
+  (Windows — **Not Implemented Yet**).
   It talks to the Kubernetes API only.
 - **wwt**, the WebSocket proxy, validates your session JWT **before**
   opening any TCP connection to guacd. guacd — the Apache Guacamole
