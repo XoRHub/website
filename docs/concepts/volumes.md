@@ -41,12 +41,10 @@ Two deliberate consequences:
 - **GitOps can never destroy user data**: `kubectl delete` / ArgoCD
   prune never carry the opt-in, so they always retain the volume.
 - **A policy TTL deletes the volume**: `lifecycle.maxLifetime` deletes
-  the workspace *and* its home on expiry — reclaiming storage is
+  the workspace _and_ its home on expiry — reclaiming storage is
   precisely what a TTL is for.
 
 ![Placeholder — Volumes tab listing retained volumes](/img/placeholders/volumes-tab.png)
-
-{/* TODO(image): capture de l'onglet Volumes (volumes retenus, provenance, bouton delete) */}
 
 ## Reusing a volume
 
@@ -55,7 +53,7 @@ At creation, pass the retained volume's name:
 ```yaml
 spec:
   templateRef: ubuntu-desktop
-  homeVolumeName: my-old-workspace-home   # "start from an existing volume"
+  homeVolumeName: my-old-workspace-home # "start from an existing volume"
 ```
 
 The webhook checks: same owner, volume actually retained, same target
@@ -97,7 +95,7 @@ is deliberately allowed) and operator-owned labels always win.
 
 Retained volumes keep their metadata and ledger — a detached volume
 still holds the user's data, exactly the one worth keeping in the
-backup rotation. It is *not* re-synced while detached (no workspace
+backup rotation. It is _not_ re-synced while detached (no workspace
 reconciles it); the next adoption converges it against the adopting
 template, removing the old template's ledgered keys and stamping the
 new ones.

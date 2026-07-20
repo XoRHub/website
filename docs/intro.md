@@ -19,8 +19,6 @@ desktop, accessible from any browser:
 
 ![Placeholder — WaaS portal listing a user's workspaces](/img/placeholders/dashboard.png)
 
-{/* TODO(image): capture du portail utilisateur listant les workspaces (cards avec phase/protocole) */}
-
 ## Workspaces as code, GitOps-first
 
 A workspace is a **Kubernetes resource**. You create it with `kubectl
@@ -28,12 +26,12 @@ apply`, ArgoCD or Flux like anything else in the cluster — or from the
 web portal, which goes through the exact same CRDs. Four CRDs (group
 `waas.xorhub.io/v1alpha1`) drive the whole platform:
 
-| CRD | Short name | Role |
-|---|---|---|
-| [`Workspace`](reference/crds/workspace) | — | One user's desktop: which template, who owns it, paused or running. |
-| [`WorkspaceTemplate`](reference/crds/workspacetemplate) | — | The shape of a desktop: image, sizing, protocols, workload kind, schedule, what users may override. |
-| [`WorkspacePolicy`](reference/crds/workspacepolicy) | `wsp` | Admin guardrails: who may create how many workspaces, of which images, with which limits. |
-| [`WorkspaceImage`](reference/crds/workspaceimage) | `wsi` | A catalog entry: one admin-approved image (or registry) with its protocols and sizing bounds. |
+| CRD                                                     | Short name | Role                                                                                                |
+| ------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| [`Workspace`](reference/crds/workspace)                 | —          | One user's desktop: which template, who owns it, paused or running.                                 |
+| [`WorkspaceTemplate`](reference/crds/workspacetemplate) | —          | The shape of a desktop: image, sizing, protocols, workload kind, schedule, what users may override. |
+| [`WorkspacePolicy`](reference/crds/workspacepolicy)     | `wsp`      | Admin guardrails: who may create how many workspaces, of which images, with which limits.           |
+| [`WorkspaceImage`](reference/crds/workspaceimage)       | `wsi`      | A catalog entry: one admin-approved image (or registry) with its protocols and sizing bounds.       |
 
 Governance is enforced **server-side** by an admission webhook — going
 straight at the Kubernetes API with `kubectl` gives you the same rules
@@ -52,10 +50,6 @@ flowchart LR
     X -->|JWT validated first| G[guacd<br/>ClusterIP only]
     G --> W
 ```
-
-![Placeholder — WaaS architecture diagram](/img/placeholders/architecture.png)
-
-{/* TODO(image): schéma d'architecture propre (Browser → API Server → K8s API → Operator → pod/VM ; wwt → guacd) */}
 
 What each piece does, from an operator's point of view:
 

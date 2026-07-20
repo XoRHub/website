@@ -18,9 +18,9 @@ The template picks the workload kind and passes through the pod spec:
 ```yaml
 spec:
   workload:
-    kind: Deployment          # Deployment (default) | StatefulSet | Pod
-    securityContext: {}       # container-level
-    podSecurityContext: {}    # pod-level
+    kind: Deployment # Deployment (default) | StatefulSet | Pod
+    securityContext: {} # container-level
+    podSecurityContext: {} # pod-level
     volumes: []
     volumeMounts: []
     nodeSelector: {}
@@ -44,13 +44,13 @@ A template may declare several connection protocols:
 ```yaml
 spec:
   protocols:
-    - name: vnc          # vnc | rdp | ssh | kasmvnc
+    - name: vnc # vnc | rdp | ssh | kasmvnc
       port: 5901
-      default: true      # first entry wins if none is marked
-      params:            # locked guacd connection parameters
+      default: true # first entry wins if none is marked
+      params: # locked guacd connection parameters
         color-depth: "24"
-      userParams: [color-depth, cursor]   # user-tunable at connect time
-      credentialsSecretRef: my-creds      # optional explicit credentials
+      userParams: [color-depth, cursor] # user-tunable at connect time
+      credentialsSecretRef: my-creds # optional explicit credentials
 ```
 
 - `vnc`, `rdp` and `ssh` are freely combinable on one template.
@@ -63,6 +63,7 @@ incompatibly or be **removed at any time**, without a deprecation
 cycle. Don't build production templates on it — prefer `vnc`, `rdp` or
 `ssh`.
 :::
+
 - With no `protocols` at all, one is synthesized from `os`/`port`
   (linux → `vnc:5901`, windows → `rdp:3389`).
 - Every `params` key is validated at admission against the platform's
@@ -126,10 +127,22 @@ The template decides what workspace creators may deviate:
 ```yaml
 spec:
   overrides:
-    allowedFields: [env, resources, protocol, protocolParams,
-                    securityContext, podSecurityContext, volumes,
-                    nodeSelector, tolerations, schedule, placement, metadata]
-    owner: alice        # this platform user may override anything (template-side)
+    allowedFields:
+      [
+        env,
+        resources,
+        protocol,
+        protocolParams,
+        securityContext,
+        podSecurityContext,
+        volumes,
+        nodeSelector,
+        tolerations,
+        schedule,
+        placement,
+        metadata,
+      ]
+    owner: alice # this platform user may override anything (template-side)
 ```
 
 Merge semantics: env/volumes/mounts merge by name (workspace wins),
@@ -143,7 +156,7 @@ On top of the template's list, the user's
 [**policy**](governance#override-restriction) may restrict further —
 the effective allow-list is the **intersection** of both. Enforcement
 is server-side (admission webhook + a reconciler re-check), and every
-applied override is audited (field and env var *names*, never values).
+applied override is audited (field and env var _names_, never values).
 
 :::warning
 Allow-listing `volumes` lets users mount arbitrary volume sources —
@@ -163,15 +176,15 @@ creation-time-only — see
 
 ## Protocol × feature matrix
 
-| Feature | VNC | RDP | SSH | KasmVNC (experimental) |
-|---|---|---|---|---|
-| Audio playback | ✅ (`enable-audio` + `exposeAudioPort`) | ⚙️ param exists; official images ship no RDP audio chain | N/A | ❌ |
-| Governed clipboard | ✅ live | ✅ live, text only | ✅ live | ✅ container-side |
-| Persistent home | ✅ | ✅ | ✅ | ✅ |
-| File transfer | 🚫 platform-blocked | 🚫 | 🚫 | 🚫 |
-| Session recording | 🚫 platform-blocked | 🚫 | 🚫 | ❌ |
-| Keyboard layout | N/A (direct keysyms) | ✅ auto-detected from the browser locale | N/A | N/A |
-| Dynamic resize | ✅ | ✅ | ❌ (CSS-scaled) | ✅ native |
+| Feature            | VNC                                     | RDP                                                      | SSH             | KasmVNC (experimental) |
+| ------------------ | --------------------------------------- | -------------------------------------------------------- | --------------- | ---------------------- |
+| Audio playback     | ✅ (`enable-audio` + `exposeAudioPort`) | ⚙️ param exists; official images ship no RDP audio chain | N/A             | ❌                     |
+| Governed clipboard | ✅ live                                 | ✅ live, text only                                       | ✅ live         | ✅ container-side      |
+| Persistent home    | ✅                                      | ✅                                                       | ✅              | ✅                     |
+| File transfer      | 🚫 platform-blocked                     | 🚫                                                       | 🚫              | 🚫                     |
+| Session recording  | 🚫 platform-blocked                     | 🚫                                                       | 🚫              | ❌                     |
+| Keyboard layout    | N/A (direct keysyms)                    | ✅ auto-detected from the browser locale                 | N/A             | N/A                    |
+| Dynamic resize     | ✅                                      | ✅                                                       | ❌ (CSS-scaled) | ✅ native              |
 
 Legend: ✅ supported · ⚙️ advanced/YAML only · 🚫 deliberately blocked
 for everyone (until the feature ships with its own policy gate) ·
@@ -191,5 +204,3 @@ group workspaces, per-user **protocol/parameter preferences**
 (re-validated server-side at every connect), and light/dark **theme**.
 
 ![Placeholder — template picker with icons in the creation dialog](/img/placeholders/template-picker.png)
-
-{/* TODO(image): capture du picker de templates (icônes dashboard-icons, descriptions) */}

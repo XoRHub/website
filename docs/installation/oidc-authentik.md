@@ -6,6 +6,8 @@ description: A worked OIDC setup — Authentik provider and application, Helm va
 
 # SSO example: Authentik
 
+![Placeholder — WaaS portal OIDC login page](/img/placeholders/login-oidc.png)
+
 A complete, working OIDC configuration with
 [Authentik](https://goauthentik.io) as the IdP. The general knobs are
 described in [Configuration → Authentication](configuration.md#authentication-oidc-sso);
@@ -19,14 +21,14 @@ Throughout, replace `authentik.example.com` (the IdP) and
 
 **Applications → Providers → Create → OAuth2/OpenID Provider**:
 
-| Setting | Value |
-|---|---|
-| Authorization flow | `default-provider-authorization-explicit-consent` (or implicit) |
-| Client type | **Confidential** |
-| Redirect URI (strict) | `https://waas.example.com/api/v1/auth/oidc/callback` |
-| Signing key | any RS256 key (e.g. the built-in self-signed certificate) — **required**, the id_token must be signed |
-| Scopes (property mappings) | keep the defaults: `openid`, `email`, `profile` |
-| Subject mode | keep the default (**hashed user ID**) — see the warning below |
+| Setting                    | Value                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Authorization flow         | `default-provider-authorization-explicit-consent` (or implicit)                                       |
+| Client type                | **Confidential**                                                                                      |
+| Redirect URI (strict)      | `https://waas.example.com/api/v1/auth/oidc/callback`                                                  |
+| Signing key                | any RS256 key (e.g. the built-in self-signed certificate) — **required**, the id_token must be signed |
+| Scopes (property mappings) | keep the defaults: `openid`, `email`, `profile`                                                       |
+| Subject mode               | keep the default (**hashed user ID**) — see the warning below                                         |
 
 Note the generated **Client ID** and **Client Secret**.
 
@@ -90,10 +92,10 @@ apiServer:
     clientID: "<client ID from step 1>"
     clientSecretRef: { name: waas-oidc, key: client-secret }
     redirectURL: https://waas.example.com/api/v1/auth/oidc/callback
-    groupsClaim: groups              # authentik default — explicit for clarity
+    groupsClaim: groups # authentik default — explicit for clarity
     adminGroups: [waas-admins]
-    providerName: authentik          # label on the login button
-    disableLocalLogin: false         # see below before flipping to true
+    providerName: authentik # label on the login button
+    disableLocalLogin: false # see below before flipping to true
 ```
 
 `helm upgrade`, and the login page shows a **"Sign in with authentik"**

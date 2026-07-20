@@ -7,7 +7,7 @@ description: What the platform admin actually does day to day — the two portal
 # Day-2 administration
 
 Once WaaS is installed and governance is seeded, running the platform
-is mostly *reviewing* — the operator reconciles, the sweepers pause and
+is mostly _reviewing_ — the operator reconciles, the sweepers pause and
 clean up, the webhook enforces. This page maps what the two portal
 views offer, then walks the routine tasks.
 
@@ -39,8 +39,6 @@ What every authenticated user gets:
 
 ![Placeholder — user dashboard with workspace cards](/img/placeholders/dashboard.png)
 
-{/* TODO(image): capture du portail utilisateur listant les workspaces (cards avec phase/protocole) */}
-
 ### Admin view (the console)
 
 Everything above, plus:
@@ -63,11 +61,7 @@ Everything above, plus:
 
 ![Placeholder — admin fleet dashboard](/img/placeholders/fleet-view.png)
 
-{/* TODO(image): capture du dashboard Fleet admin (liste des workspaces, onglets Volumes / Remote workspaces) */}
-
 ![Placeholder — Users page with the effective-policy debugger](/img/placeholders/admin-users.png)
-
-{/* TODO(image): capture de la page Users admin (dialogue d'édition avec la vue effective-policy) */}
 
 Remember the writing model: the console edits the CRs **directly**. If
 those CRs are GitOps-managed, a console edit is a manual override the
@@ -83,11 +77,14 @@ quota) that's fine, just mirror the change in Git.
   catalog entry, templates using the image fail with
   `ImageNotInCatalog`.
 - **Emergency-disable an image** (CVE, misbehavior):
+
   ```sh
   kubectl patch wsi <name> --type=merge -p '{"spec":{"enabled":false}}'
   ```
+
   New workspaces are blocked instantly; running ones keep working —
   pause them from the Fleet view if the image is actively dangerous.
+
 - If you kept the bootstrap **registry-wide** entry, new official
   images appear in the picker on their own (catalog sync) — review the
   [waas-images releases](https://github.com/XoRHub/waas-images) rather

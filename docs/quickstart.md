@@ -104,8 +104,6 @@ create.
 
 ![Placeholder — workspace creation dialog in the portal](/img/placeholders/create-workspace.png)
 
-{/* TODO(image): capture du dialogue de création de workspace (choix template + sliders sizing) */}
-
 Or declaratively — the GitOps way:
 
 ```yaml title="workspace.yaml"
@@ -116,7 +114,7 @@ metadata:
   namespace: waas
 spec:
   displayName: "Alice's Ubuntu desktop"
-  owner: alice          # must match YOUR authenticated username via kubectl
+  owner: alice # must match YOUR authenticated username via kubectl
   templateRef: ubuntu-desktop
 ```
 
@@ -139,16 +137,14 @@ reaches the browser.
 
 ![Placeholder — VNC session open in the browser](/img/placeholders/session-vnc.png)
 
-{/* TODO(image): capture d'une session VNC XFCE ouverte dans le navigateur (overlay WaaS visible) */}
-
 ## 5. Everyday operations
 
-| Action | Portal | kubectl |
-|---|---|---|
-| Pause (free compute, keep home) | card menu → Pause | `kubectl patch workspace <name> --type=merge -p '{"spec":{"paused":true}}'` |
-| Resume | card menu → Resume | same with `"paused":false` |
-| Delete (home volume kept by default) | card menu → Delete | `kubectl delete workspace <name>` |
-| Inspect status and events | card → Events panel | `kubectl describe workspace <name>` |
+| Action                               | Portal              | kubectl                                                                     |
+| ------------------------------------ | ------------------- | --------------------------------------------------------------------------- |
+| Pause (free compute, keep home)      | card menu → Pause   | `kubectl patch workspace <name> --type=merge -p '{"spec":{"paused":true}}'` |
+| Resume                               | card menu → Resume  | same with `"paused":false`                                                  |
+| Delete (home volume kept by default) | card menu → Delete  | `kubectl delete workspace <name>`                                           |
+| Inspect status and events            | card → Events panel | `kubectl describe workspace <name>`                                         |
 
 ## Where to go next
 

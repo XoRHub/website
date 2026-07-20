@@ -37,10 +37,6 @@ flowchart TB
     end
 ```
 
-![Placeholder — image layer tree](/img/placeholders/image-layers.png)
-
-{/* TODO(image): schéma propre de l'arborescence base → desktop → apps avec les variantes */}
-
 **VNC is the recommended protocol for Linux**; RDP is a compatibility
 option, and SSH exists only on the OS-level desktop images. Per-app
 images (`apps/*`) are VNC-only **by construction** — xrdp and sshd
@@ -58,19 +54,19 @@ Any image honoring this contract works as a WaaS Linux workspace —
 that's the whole interface, whether the image comes from waas-images or
 [your own build](build-your-own.md):
 
-| Aspect | Value |
-|---|---|
-| VNC port | `5901` (RFB, VncAuth) — the default for `os: linux` |
-| RDP port | `3389` (TLS negotiated) — only images built with RDP support, enabled via `WAAS_RDP_ENABLED=1` |
-| SSH port | `2222` — publickey only, OS-level desktop images only, opt-in via `WAAS_SSH_ENABLED=1` |
-| Audio | PulseAudio native protocol on `4713`, streamed by guacd when the session enables audio |
-| Readiness | TCP open on the template port ⇔ the protocol server accepts connections (matches the operator's probes) |
-| User | `waas_user`, UID/GID `1000:1000`, home **`/home/waas_user`** = the operator's PVC mount; fresh volumes are seeded from `/etc/skel` |
-| Writable paths | `/home/waas_user` (PVC), `/tmp`, `/run` (emptyDirs) — everything else read-only-safe |
-| Required env | **`WAAS_DESKTOP_PASSWORD`** — one session password shared by VNC and RDP. The image **refuses to start without it**. Legacy names (`VNC_PW`, `RDP_PASSWORD`) are refused with an explicit error. |
-| Optional env | `WAAS_VNC_RESOLUTION`, `WAAS_VNC_COL_DEPTH`, `WAAS_VNC_ENABLED`, `WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`, `WAAS_SSH_ENABLED`, `WAAS_SSH_AUTHORIZED_KEYS(_FILE)`, `WAAS_SSH_HOST_KEY_FILE`, `WAAS_STARTUP` (full session command), `WAAS_APP` (single-app kiosk command — mutually exclusive with `WAAS_STARTUP`), `WAAS_AUDIO_ENABLED`, `WAAS_TLS_CERT`/`WAAS_TLS_KEY` |
-| Init hook | optional ConfigMap mounted at `/etc/waas/init.d/` — `*.sh` sourced at boot, as UID 1000 |
-| Recommended pod securityContext | `runAsNonRoot`, `runAsUser/fsGroup: 1000`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault` → PodSecurity **restricted** compliant |
+| Aspect                          | Value                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| VNC port                        | `5901` (RFB, VncAuth) — the default for `os: linux`                                                                                                                                                                                                                                                                                                                        |
+| RDP port                        | `3389` (TLS negotiated) — only images built with RDP support, enabled via `WAAS_RDP_ENABLED=1`                                                                                                                                                                                                                                                                             |
+| SSH port                        | `2222` — publickey only, OS-level desktop images only, opt-in via `WAAS_SSH_ENABLED=1`                                                                                                                                                                                                                                                                                     |
+| Audio                           | PulseAudio native protocol on `4713`, streamed by guacd when the session enables audio                                                                                                                                                                                                                                                                                     |
+| Readiness                       | TCP open on the template port ⇔ the protocol server accepts connections (matches the operator's probes)                                                                                                                                                                                                                                                                    |
+| User                            | `waas_user`, UID/GID `1000:1000`, home **`/home/waas_user`** = the operator's PVC mount; fresh volumes are seeded from `/etc/skel`                                                                                                                                                                                                                                         |
+| Writable paths                  | `/home/waas_user` (PVC), `/tmp`, `/run` (emptyDirs) — everything else read-only-safe                                                                                                                                                                                                                                                                                       |
+| Required env                    | **`WAAS_DESKTOP_PASSWORD`** — one session password shared by VNC and RDP. The image **refuses to start without it**. Legacy names (`VNC_PW`, `RDP_PASSWORD`) are refused with an explicit error.                                                                                                                                                                           |
+| Optional env                    | `WAAS_VNC_RESOLUTION`, `WAAS_VNC_COL_DEPTH`, `WAAS_VNC_ENABLED`, `WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`, `WAAS_SSH_ENABLED`, `WAAS_SSH_AUTHORIZED_KEYS(_FILE)`, `WAAS_SSH_HOST_KEY_FILE`, `WAAS_STARTUP` (full session command), `WAAS_APP` (single-app kiosk command — mutually exclusive with `WAAS_STARTUP`), `WAAS_AUDIO_ENABLED`, `WAAS_TLS_CERT`/`WAAS_TLS_KEY` |
+| Init hook                       | optional ConfigMap mounted at `/etc/waas/init.d/` — `*.sh` sourced at boot, as UID 1000                                                                                                                                                                                                                                                                                    |
+| Recommended pod securityContext | `runAsNonRoot`, `runAsUser/fsGroup: 1000`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault` → PodSecurity **restricted** compliant                                                                                                                                                          |
 
 Every runtime variable is `WAAS_`-prefixed — that is the whole naming
 contract. Under the platform you rarely set the password yourself:
