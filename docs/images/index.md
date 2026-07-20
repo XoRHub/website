@@ -24,29 +24,83 @@ images. Every image boots in CI with `--read-only --cap-drop ALL
 --security-opt no-new-privileges` and must pass a real protocol
 handshake — the hardening checklist is enforced, not aspirational.
 
+## How the images are built
+
+Every image declares one parent (`from:` in its manifest), which CI
+resolves to the exact ref built earlier in the same pipeline. An image
+contains its own layer plus every ancestor's — so **capability is
+inherited, never added later**: a per-app kiosk cannot serve SSH
+because the core it descends from never installed sshd, and `devtools`
+gets Firefox, git and mise for free because it descends through the
+desktop layer.
+
 ```mermaid
 flowchart TB
-    subgraph layers [Image layers]
-        B["base/ — core-* images<br/>Xvnc + openbox, optional xrdp/sshd<br/>(internal build parents, never published)"]
-        D["desktop/ — XFCE<br/>ubuntu-desktop-noble, debian-desktop-13, fedora-desktop-43"]
-        A["apps/ — single-app kiosks (WAAS_APP)<br/>firefox, chrome, libreoffice<br/>(no desktop in the image, VNC-only)"]
-        DT["apps/devtools — full XFCE desktop<br/>(the one exception)"]
-        B --> D
-        B --> A
-        D --> DT
+    subgraph base ["base/ — core-* build parents, never published"]
+        CORE["core-ubuntu-noble<br/>core-debian-13 · core-fedora-43<br/><b>VNC only</b>"]
+        FULL["core-*-full<br/><b>+ xrdp + sshd</b>"]
     end
+
+    subgraph desktop ["desktop/ — XFCE + baseline (browser, git, ssh client, mise)"]
+        OSD["ubuntu-desktop-noble<br/>debian-desktop-13<br/>fedora-desktop-43"]
+        XP["core-ubuntu-noble-xfce<br/><i>VNC-only parent, never published</i>"]
+    end
+
+    subgraph apps ["apps/"]
+        KIOSK["single-app kiosks (WAAS_APP)<br/>no desktop in the image"]
+        DT["devtools<br/>full XFCE desktop + VS Code"]
+    end
+
+    FULL --> OSD
+    CORE --> XP
+    CORE --> KIOSK
+    XP --> DT
 ```
 
+The two core rows are siblings, not a chain: one Dockerfile builds
+both, `INSTALL_RDP`/`INSTALL_SSH` decides which binaries land. That is
+why the multi-protocol desktops descend from `-full` while everything
+VNC-only descends from the bare core — and why a `-dev` variant is a
+separate **tag** from the same build, not a runtime flag.
+
+### Build order
+
+CI derives each image's **depth** from that parentage — 0 for a root,
+parent + 1 otherwise — and builds one depth at a time:
+
+```mermaid
+flowchart LR
+    L0["<b>layer-0</b> — 6 images<br/>core-ubuntu-noble · -full<br/>core-debian-13 · -full<br/>core-fedora-43 · -full"]
+    L1["<b>layer-1</b> — 9 images<br/>ubuntu-desktop-noble<br/>debian-desktop-13 · fedora-desktop-43<br/>core-ubuntu-noble-xfce<br/>firefox · chrome · libreoffice<br/>hermes-agent · -dev"]
+    L2["<b>layer-2</b> — 2 images<br/>devtools · devtools-dev"]
+    L0 -->|"merge + push"| L1 -->|"merge + push"| L2
+```
+
+Within a wave everything runs in parallel — one job per image **per
+architecture**, each doing build → smoke → scan, then a merge job that
+publishes the multi-arch index. The next wave cannot start before that
+merge: a child's `BASE_IMAGE` is the exact ref its parent just pushed,
+which is what makes a change to a base propagate through the whole tree
+in a single pipeline run.
+
+Depth is a *consequence* of `from:`, not something you set. Only
+`devtools` reaches depth 2 today, and the generator hard-fails above it
+— `.github/workflows/build.yml` wires exactly three `layer-N`/`merge-N`
+pairs, so a deeper tree is a deliberate ~10-line change there, never a
+silent one.
+
 **VNC is the recommended protocol for Linux**; RDP is a compatibility
-option, and SSH exists only on the OS-level desktop images. Per-app
-images (`apps/*`) are VNC-only **by construction** — xrdp and sshd
-binaries are simply absent, not merely disabled — and ship as
-**single-app kiosks**: they are built on the bare core (no desktop
-environment in the image at all, Kasm-style), and the `WAAS_APP`
-session mode runs the one application undecorated and maximized, with
-no panel, terminal or window-manager keybindings behind it. The
-exception is `devtools`, a real XFCE desktop on the VNC-only XFCE
-parent.
+option, and SSH exists only on the OS-level desktop images — on the
+kiosks the xrdp and sshd binaries are simply absent, not merely
+disabled. The `WAAS_APP` session mode runs a kiosk's one application
+undecorated and maximized, with no panel, terminal or window-manager
+keybindings behind it.
+
+The OS desktops ship a **working baseline**, not a bare XFCE:
+Firefox, git, an **ssh client**, curl, vim and less — enough to clone,
+edit and push without installing anything first. `devtools` inherits
+that and adds VS Code plus the system build toolchain on top; the
+kiosks deliberately do not, having no shell to use it from.
 
 ## The contract with the Workspace CR
 
@@ -85,7 +139,35 @@ Security defaults worth knowing:
   at runtime, is hashed into tmpfs and scrubbed from the environment.
 - `-dev` tagged variants (e.g. `devtools-dev`) are a documented reduced
   profile — sudo baked in, requires a relaxed pod securityContext —
-  meant to be gated behind `allowedGroups` in the catalog.
+  meant to be gated behind `allowedGroups` in the catalog. Reach for
+  one only when you genuinely need system packages: for language
+  runtimes and CLI tools, the hardened image is enough (see below).
+
+## Installing tools that survive a restart
+
+Only `/home/waas_user` is a volume, so anything `apt install` writes
+lands in the container layer and dies with the pod. The desktop images
+therefore ship **mise**: it installs language runtimes and CLI tools
+under `~/.local/share/mise` — on the home PVC — so they survive
+restarts, pauses and image changes exactly like the rest of the home.
+
+```bash
+mise use -g node@22      # persists; still there after a pod restart
+mise use -g python@3.13
+```
+
+It needs no privileges and writes nothing outside `$HOME` and `/tmp`,
+so it works on the **hardened** images under a read-only root
+filesystem. A workspace that only needs a runtime or a CLI tool
+therefore does **not** need a `-dev` tag.
+
+What it does not cover: **system libraries**. Anything requiring a
+shared object, a codec or an apt package's maintainer scripts still
+means `sudo apt install` on a `-dev` image — and that is still lost on
+restart. Two consequences worth knowing: what a user installs this way
+lives on the PVC, so it sits outside the image's trivy gate and SBOM by
+construction; and mise's shims come first on `PATH`, so a
+user-installed `python3` shadows the image's own.
 
 ## Which images exist?
 

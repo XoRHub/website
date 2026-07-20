@@ -12,6 +12,13 @@ template via `spec.homeMountPath`). It is the only thing that survives
 pod restarts, pauses, image changes… and, by default, workspace
 deletion.
 
+That "only" is load-bearing: a package installed with `apt` goes to the
+container layer and is gone on the next restart. The waas-images
+desktops ship **mise** for exactly this reason — it installs runtimes
+and CLI tools under `~/.local/share/mise`, on the volume, so they
+persist with the rest of the home (see
+[Workspace images](../images/index.md#installing-tools-that-survive-a-restart)).
+
 ## Retention model
 
 The PVC is the source of truth — no separate database of volumes. A
