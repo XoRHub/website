@@ -32,7 +32,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - id: ver
         env:
@@ -43,7 +43,7 @@ jobs:
           fi
           echo "version=$RAW" >> "$GITHUB_OUTPUT"
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
       - run: npm ci
 
       - name: Sync CRD schemas at the released tag
@@ -76,7 +76,7 @@ jobs:
         run: npm run build
 
       - name: Open the version PR
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
           branch: version-cut/${{ steps.ver.outputs.version }}
           commit-message: "docs: cut version ${{ steps.ver.outputs.version }}"
