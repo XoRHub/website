@@ -13,10 +13,10 @@
       "type": "object"
     },
     "spec": {
-      "description": "WorkspacePolicySpec is the admin-defined envelope for self-service.\n\nResolution rule (deliberate, keep in sync with pkg/policy): among all\npolicies whose subjects match the user, the HIGHEST spec.priority wins\nand applies as a whole \u2014 no field merging between policies. Ties break\non the lexicographically smallest name and surface a warning, because\ntwo same-priority matches are a configuration smell. A policy with no\nsubjects matches every authenticated user: name one \"default\" with\npriority 0 as the restrictive fallback. No matching policy at all\nmeans DENY (fail closed).",
+      "description": "WorkspacePolicySpec is the admin-defined envelope for self-service.\n\nResolution rule (deliberate, keep in sync with pkg/policy): among all\npolicies whose subjects match the user, the HIGHEST spec.priority wins\nand applies as a whole — no field merging between policies. Ties break\non the lexicographically smallest name and surface a warning, because\ntwo same-priority matches are a configuration smell. A policy with no\nsubjects matches every authenticated user: name one \"default\" with\npriority 0 as the restrictive fallback. No matching policy at all\nmeans DENY (fail closed).",
       "properties": {
         "clipboard": {
-          "description": "Clipboard controls the clipboard bridge between the user's machine\nand their workspace sessions. Absent = both directions allowed.\nEnforced by the WebSocket proxy (instruction filtering, rights\nstamped into the connection token) \u2014 the portal only reflects it.",
+          "description": "Clipboard controls the clipboard bridge between the user's machine\nand their workspace sessions. Absent = both directions allowed.\nEnforced by the WebSocket proxy (instruction filtering, rights\nstamped into the connection token) — the portal only reflects it.",
           "properties": {
             "copyFromWorkspace": {
               "description": "CopyFromWorkspace permits copying FROM the workspace to the local\nclipboard (data exfiltration direction).",
@@ -213,7 +213,7 @@
           "type": "object"
         },
         "priority": {
-          "description": "Priority orders competing policies; higher wins. Convention:\n0 = default fallback, 100\u2013999 = group policies, 1000+ = per-user\nexceptions.",
+          "description": "Priority orders competing policies; higher wins. Convention:\n0 = default fallback, 100–999 = group policies, 1000+ = per-user\nexceptions.",
           "format": "int32",
           "minimum": 0,
           "type": "integer"

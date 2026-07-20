@@ -1,0 +1,332 @@
+{
+ "spec": {
+  "key": "spec",
+  "comment": "WorkspaceImageSpec is one admin-approved catalog entry. Only images\npresent in the catalog AND enabled can be referenced (through a\nWorkspaceTemplate) by a Workspace; everything else is rejected at\nadmission. The catalog is deliberately separate from WorkspaceTemplate:\nthe template says HOW to deploy, this object records WHAT is approved\nand for WHOM, and disabling it must not tear the template down.",
+  "facts": null,
+  "kind": "node",
+  "hint": "{…}",
+  "children": [
+   {
+    "key": "allowedGroups",
+    "comment": "AllowedGroups restricts this image to members of at least one of\nthese IdP (OIDC) groups. Empty = every authenticated user (still\nsubject to the policy's image subset).",
+    "facts": null,
+    "kind": "node",
+    "fold": false,
+    "children": [
+     {
+      "kind": "leaf",
+      "key": null,
+      "dash": true,
+      "value": "<string>"
+     }
+    ]
+   },
+   {
+    "key": "architectures",
+    "comment": "Architectures the image is published for. The operator turns this\ninto node affinity (ARM64 control-plane vs AMD64 workers). Empty\nmeans any node.",
+    "facts": null,
+    "kind": "node",
+    "fold": false,
+    "children": [
+     {
+      "kind": "leaf",
+      "key": null,
+      "dash": true,
+      "value": "amd64 | arm64"
+     }
+    ]
+   },
+   {
+    "key": "catalog",
+    "comment": "Catalog configures the periodic fetch of a published catalog\nmanifest (format below) listing the images currently under this\nentry's registry, with display metadata (os/app/version/icon) for\nthe portal catalog picker. Only meaningful when spec.registry is\nset (ignored on exact spec.image entries — ENFORCEMENT never reads\nthis field, it is purely cosmetic). Grouped under one struct\n(rather than flat fields) so a future split into its own CRD, if a\nreal need for K8s-RBAC-level separation ever appears, is a\nmechanical lift instead of a field-by-field migration — no such\nsplit is planned today, application-level authorization (the same\nmodel WorkspacePolicy already uses) covers any future need for a\nnarrower \"catalog editor\" role. Absent = no automatic catalog; the\nregistry approval itself still works.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "auth",
+      "comment": "Auth configures how the live fetch authenticates — only\nmeaningful when From.URL is set (ignored, and rejected at\nadmission if From points at ConfigMapKeyRef/SecretKeyRef instead,\nsee the XValidation on ImageCatalogSpec above). Nested by method\n(one field per auth kind) instead of a flat credential reference,\nso a future method (basic auth, mTLS...) is a pure ADDITION — a\nnew sibling field on ImageCatalogAuth — never a rename or a\nreinterpretation of what an existing field means. Absent =\nunauthenticated GET, the only mode the two known public catalogs\n(docker.io/xorhub, docker.io/kasmweb) need.",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "bearerToken",
+        "comment": "BearerToken sends \"Authorization: Bearer <token>\" on the fetch.",
+        "facts": null,
+        "kind": "node",
+        "hint": "{…}",
+        "children": [
+         {
+          "key": "secretRef",
+          "comment": "SecretRef names an existing Opaque Secret (in the platform\nworkspace namespace, same convention as\nWorkspaceImageSpec.ImagePullSecretRef) holding the token under\nthe key \"token\". A missing/unreadable Secret, or one without this\nkey, is a sync failure (status.catalog.lastSyncError), never a\ncrash — same fail-soft doctrine as the rest of the reconciler.",
+          "facts": "required · minLength: 1",
+          "kind": "leaf",
+          "value": "<string>"
+         }
+        ],
+        "fold": false
+       }
+      ],
+      "fold": false
+     },
+     {
+      "key": "from",
+      "comment": "From is the catalog manifest source (format below, § 1) —\nexactly one of URL/ConfigMapKeyRef/SecretKeyRef, mutually\nexclusive (enforced on ImageCatalogSource below; never more than\none set). URL is fetched live over HTTP(S); ConfigMapKeyRef/SecretKeyRef\nare read directly, no HTTP involved. Both are re-checked on the\nSAME periodic cadence (apiServer.catalogSyncInterval) — no\ndedicated watch on the referenced ConfigMap/Secret (the\napi-server's CatalogSyncWorker deliberately reads both uncached,\nwithout the watch verb) — a\nstatic, GitOps-managed catalog for an admin who prefers not to\ndepend on a live registry endpoint. This is a first-class,\npermanent choice, not a stopgap-until-network-works: an admin\npicks ONE of the three and stays on it.",
+      "facts": "required",
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "configMapKeyRef",
+        "comment": "ConfigMapKeyRef reads the manifest from a ConfigMap key in the\nplatform workspace namespace instead of fetching it over HTTP —\nthe common case, since the content isn't secret, just a static\nadmin-provided catalog. Key defaults to \"catalog.yaml\" when\nempty. Re-read periodically (apiServer.catalogSyncInterval), not\njust once — no dedicated watch on the ConfigMap (uncached reads,\nno watch verb, by existing design). Not a corev1\nConfigMapKeySelector: that type marks key as REQUIRED in the\ngenerated schema, which would kill the default.",
+        "facts": null,
+        "kind": "node",
+        "hint": "{…}",
+        "children": [
+         {
+          "key": "key",
+          "comment": "Key inside it; empty reads \"catalog.yaml\".",
+          "facts": null,
+          "kind": "leaf",
+          "value": "<string>"
+         },
+         {
+          "key": "name",
+          "comment": "Name of the ConfigMap.",
+          "facts": "required · minLength: 1",
+          "kind": "leaf",
+          "value": "<string>"
+         }
+        ],
+        "fold": false
+       },
+       {
+        "key": "secretKeyRef",
+        "comment": "SecretKeyRef reads the manifest from a Secret key instead, in the\nplatform workspace namespace — for an admin who wants the\nmanifest content itself access-controlled. Key is REQUIRED (no\ndefault, unlike ConfigMapKeyRef): no naming convention is assumed\nfor a Secret. Distinct from ImageCatalogAuth.BearerToken below:\nthat one is a fetch CREDENTIAL for a URL source, this one IS the\nmanifest content itself; the two are never the same Secret in\npractice but nothing in the schema prevents it, and they cannot\nboth apply at once since URL/SecretKeyRef are mutually exclusive.",
+        "facts": null,
+        "kind": "node",
+        "hint": "{…}",
+        "children": [
+         {
+          "key": "key",
+          "comment": "Key inside it — required: no naming convention is assumed for a\nSecret.",
+          "facts": "required · minLength: 1",
+          "kind": "leaf",
+          "value": "<string>"
+         },
+         {
+          "key": "name",
+          "comment": "Name of the Secret.",
+          "facts": "required · minLength: 1",
+          "kind": "leaf",
+          "value": "<string>"
+         }
+        ],
+        "fold": false
+       },
+       {
+        "key": "url",
+        "comment": "URL is the catalog manifest location, fetched live and\nperiodically (apiServer.catalogSyncInterval).",
+        "facts": "minLength: 1",
+        "kind": "leaf",
+        "value": "<string>"
+       }
+      ],
+      "fold": true
+     }
+    ],
+    "fold": true
+   },
+   {
+    "key": "description",
+    "comment": "Description is shown to users when picking an image.",
+    "facts": null,
+    "kind": "leaf",
+    "value": "<string>"
+   },
+   {
+    "key": "displayName",
+    "comment": "DisplayName is the human-facing name shown in the portal catalog.",
+    "facts": "required · minLength: 1",
+    "kind": "leaf",
+    "value": "<string>"
+   },
+   {
+    "key": "enabled",
+    "comment": "Enabled is the admin kill-switch: false blocks NEW workspaces\nimmediately (existing ones keep running, see grandfathering) while\nkeeping the entry, its history and its group bindings in place.",
+    "facts": "required · default: true",
+    "kind": "leaf",
+    "value": "<boolean>"
+   },
+   {
+    "key": "image",
+    "comment": "Image is the exact reference approved by the admin. Templates must\nmatch it verbatim; pin the digest for immutability (the waas-images\npipeline publishes immutable tags precisely for this). Exactly one\nof image/registry must be set.",
+    "facts": "minLength: 1",
+    "kind": "leaf",
+    "value": "<string>"
+   },
+   {
+    "key": "imagePullSecretRef",
+    "comment": "ImagePullSecretRef names an existing kubernetes.io/dockerconfigjson\nSecret (in the platform workspace namespace) holding the pull\ncredentials for this entry's registry. The operator copies it into\neach workspace's target namespace (imagePullSecrets are read by the\nkubelet in the POD's namespace) and wires it into the PodSpec. A\nmissing or unreadable source is FAIL-CLOSED: the workspace does not\nstart and its Ready condition says PullSecretMissing.",
+    "facts": null,
+    "kind": "leaf",
+    "value": "<string>"
+   },
+   {
+    "key": "protocols",
+    "comment": "Protocols the image can serve. A template using this image must\npick a port whose protocol is listed here.",
+    "facts": "required",
+    "kind": "node",
+    "fold": false,
+    "children": [
+     {
+      "kind": "leaf",
+      "key": null,
+      "dash": true,
+      "value": "vnc | rdp | ssh | kasmvnc"
+     }
+    ]
+   },
+   {
+    "key": "registry",
+    "comment": "Registry approves every image UNDER this prefix instead of one\nexact reference — e.g. \"docker.io/kasmweb\" approves\ndocker.io/kasmweb/terminal:1.19.0 (path-boundary match: it never\napproves docker.io/kasmweb-evil/*). An exact image entry always\nbeats a registry entry; among registry entries the longest prefix\nwins. Combine with tagPolicy: a whole-registry approval with\nmoving tags allowed is the loosest possible gate.",
+    "facts": "minLength: 1",
+    "kind": "leaf",
+    "value": "<string>"
+   },
+   {
+    "key": "resources",
+    "comment": "Resources are the per-workspace sizing hints and hard bounds for\nthis image.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "default",
+      "comment": "Default is applied by the portal when the user does not choose.",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     },
+     {
+      "key": "max",
+      "comment": "Max caps a single workspace of this image regardless of policy.\nThe effective per-workspace cap is min(image.max, policy.perWorkspace).",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     },
+     {
+      "key": "min",
+      "comment": "Min rejects undersized workspaces (an IDE image needs real memory).",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     }
+    ],
+    "fold": true
+   },
+   {
+    "key": "tagPolicy",
+    "comment": "TagPolicy is the pinning discipline the matched template reference\nmust satisfy: digest (must carry @sha256:…), tag (fixed tag\nrequired — :latest and tag-less references rejected), any\n(everything allowed, latest included). Unset defaults to \"any\" on\nexact image entries (the approval is verbatim) and to \"tag\" on\nregistry entries (broad approvals stay pinned unless explicitly\nloosened).",
+    "facts": null,
+    "kind": "leaf",
+    "value": "digest | tag | any",
+    "literal": true
+   }
+  ],
+  "fold": true
+ },
+ "status": {
+  "key": "status",
+  "comment": "WorkspaceImageStatus is the observed state of a WorkspaceImage.",
+  "facts": null,
+  "kind": "node",
+  "hint": "{…}",
+  "children": [
+   {
+    "key": "catalog",
+    "comment": "Catalog is nil until the first sync attempt of a spec.catalog-configured\nentry.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "lastSyncError",
+      "comment": "LastSyncError is the most recent fetch/read failure, kept even\nafter a later sync succeeds, so admins can see WHY it once\nfailed.",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<string>"
+     },
+     {
+      "key": "lastSyncTime",
+      "comment": "LastSyncTime is when the catalog was last synced successfully:\nthe real fetch time for \"Fetched\", the time the ConfigMap/Secret\nwas last read for \"Static\".",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<timestamp>"
+     },
+     {
+      "key": "source",
+      "comment": "Source says which From variant last produced entries: \"Fetched\"\n(From.URL, a live sync succeeded at least once) or \"Static\"\n(From.ConfigMapKeyRef/SecretKeyRef was read successfully at least\nonce). Empty = never synced yet.",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<string>"
+     }
+    ],
+    "fold": false
+   }
+  ],
+  "fold": true
+ }
+}

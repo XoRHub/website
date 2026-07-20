@@ -1,0 +1,254 @@
+{
+ "spec": {
+  "key": "spec",
+  "comment": "WorkspacePolicySpec is the admin-defined envelope for self-service.\n\nResolution rule (deliberate, keep in sync with pkg/policy): among all\npolicies whose subjects match the user, the HIGHEST spec.priority wins\nand applies as a whole — no field merging between policies. Ties break\non the lexicographically smallest name and surface a warning, because\ntwo same-priority matches are a configuration smell. A policy with no\nsubjects matches every authenticated user: name one \"default\" with\npriority 0 as the restrictive fallback. No matching policy at all\nmeans DENY (fail closed).",
+  "facts": null,
+  "kind": "node",
+  "hint": "{…}",
+  "children": [
+   {
+    "key": "clipboard",
+    "comment": "Clipboard controls the clipboard bridge between the user's machine\nand their workspace sessions. Absent = both directions allowed.\nEnforced by the WebSocket proxy (instruction filtering, rights\nstamped into the connection token) — the portal only reflects it.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "copyFromWorkspace",
+      "comment": "CopyFromWorkspace permits copying FROM the workspace to the local\nclipboard (data exfiltration direction).",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<boolean>"
+     },
+     {
+      "key": "pasteToWorkspace",
+      "comment": "PasteToWorkspace permits pasting the local clipboard INTO the\nworkspace (data injection direction).",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<boolean>"
+     }
+    ],
+    "fold": false
+   },
+   {
+    "key": "images",
+    "comment": "Images is the subset of catalog entries (WorkspaceImage names)\nthis policy allows. Empty = the whole enabled catalog (each image's\nown allowedGroups still applies).",
+    "facts": null,
+    "kind": "node",
+    "fold": false,
+    "children": [
+     {
+      "kind": "leaf",
+      "key": null,
+      "dash": true,
+      "value": "<string>"
+     }
+    ]
+   },
+   {
+    "key": "lifecycle",
+    "comment": "Lifecycle bounds workspace longevity to fight accumulation.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "idleSuspendAfter",
+      "comment": "IdleSuspendAfter pauses a workspace with no active session for\nthis long (compute freed, home kept). Zero/absent = never.",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<string>"
+     },
+     {
+      "key": "maxLifetime",
+      "comment": "MaxLifetime deletes the workspace (home included) this long after\ncreation. Zero/absent = never. Deletion is announced through the\nworkspace's Events and status conditions.",
+      "facts": null,
+      "kind": "leaf",
+      "value": "<string>"
+     }
+    ],
+    "fold": false
+   },
+   {
+    "key": "limits",
+    "comment": "Limits caps what the matched user can consume.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "aggregate",
+      "comment": "Aggregate caps the SUM across all of the user's workspaces\n(paused included for storage; compute of paused workspaces is\nreleased and therefore not counted).",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "storage",
+        "comment": "Storage caps the sum of home volume sizes.",
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     },
+     {
+      "key": "defaults",
+      "comment": "Defaults is the sizing the portal proposes when the user does not\nchoose. Display-only: a per-image default (image.resources.default)\ntakes precedence, and enforcement is unaffected either way.",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     },
+     {
+      "key": "maxRunningWorkspaces",
+      "comment": "MaxRunningWorkspaces is the max simultaneously running (compute\nactive) workspaces per user. Paused workspaces do not count:\npausing frees a slot, resuming re-acquires one. Detached volumes\ndo not count either.",
+      "facts": "min: 0",
+      "kind": "leaf",
+      "value": "<int32>"
+     },
+     {
+      "key": "maxWorkspaces",
+      "comment": "MaxWorkspaces is the max simultaneous workspaces per user. Paused\nworkspaces count: their home PVC still holds storage.",
+      "facts": "min: 0",
+      "kind": "leaf",
+      "value": "<int32>"
+     },
+     {
+      "key": "perWorkspace",
+      "comment": "PerWorkspace caps a single workspace. The effective cap is\nmin(these, image.resources.max).",
+      "facts": null,
+      "kind": "node",
+      "hint": "{…}",
+      "children": [
+       {
+        "key": "cpu",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "home",
+        "comment": "Home caps the persistent home volume size.",
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       },
+       {
+        "key": "memory",
+        "comment": null,
+        "facts": null,
+        "kind": "leaf",
+        "value": "<quantity>"
+       }
+      ],
+      "fold": false
+     }
+    ],
+    "fold": true
+   },
+   {
+    "key": "overrides",
+    "comment": "Overrides bounds instantiation-time template overrides for the\ngoverned users, on top of each template's own allow-list.",
+    "facts": null,
+    "kind": "node",
+    "hint": "{…}",
+    "children": [
+     {
+      "key": "allowedFields",
+      "comment": "AllowedFields the governed users may override when the template\nalso allows them.",
+      "facts": null,
+      "kind": "node",
+      "fold": false,
+      "children": [
+       {
+        "kind": "leaf",
+        "key": null,
+        "dash": true,
+        "value": "env | securityContext | podSecurityContext | volumes | nodeSelector | tolerations | resources | protocol | protocolParams | schedule | placement | metadata"
+       }
+      ]
+     }
+    ],
+    "fold": false
+   },
+   {
+    "key": "priority",
+    "comment": "Priority orders competing policies; higher wins. Convention:\n0 = default fallback, 100–999 = group policies, 1000+ = per-user\nexceptions.",
+    "facts": "min: 0",
+    "kind": "leaf",
+    "value": "<int32>"
+   },
+   {
+    "key": "remoteWorkspaces",
+    "comment": "RemoteWorkspaces opts the governed users into the Remote Workspaces\nfeature: registering out-of-cluster machines (host/port/protocol +\ncredentials Secret) and connecting to them through guacd. Absent or\nfalse = feature hidden and refused (fail closed).",
+    "facts": null,
+    "kind": "leaf",
+    "value": "<boolean>"
+   },
+   {
+    "key": "subjects",
+    "comment": "Subjects this policy applies to (OR). Empty = every authenticated\nuser.",
+    "facts": null,
+    "kind": "node",
+    "hint": "[…]",
+    "children": [
+     {
+      "kind": "item",
+      "children": [
+       {
+        "key": "kind",
+        "comment": "SubjectKind says what a policy subject name refers to.",
+        "facts": "required",
+        "kind": "leaf",
+        "value": "User | Group",
+        "literal": true
+       },
+       {
+        "key": "name",
+        "comment": null,
+        "facts": "required · minLength: 1",
+        "kind": "leaf",
+        "value": "<string>"
+       }
+      ]
+     }
+    ],
+    "fold": false
+   }
+  ],
+  "fold": true
+ }
+}
