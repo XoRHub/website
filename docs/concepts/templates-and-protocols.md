@@ -94,7 +94,9 @@ order:
    it server-side when a session starts — the browser never sees the
    values. Ship it with External Secrets/Vault; typically the same
    Secret also feeds the pod via env `valueFrom` (e.g.
-   `WAAS_DESKTOP_PASSWORD`) so both sides agree.
+   `WAAS_DESKTOP_PASSWORD`) so both sides agree. Env `valueFrom` is a
+   **template-side** channel — workspace overrides only ever carry
+   literal values (see [Creator overrides](#creator-overrides)).
 2. **Generated per-workspace credentials** — the default when nothing
    explicit is provided: the operator generates a random credential per
    workspace, stores it in a Secret next to the CR, wires it into the
@@ -157,6 +159,21 @@ On top of the template's list, the user's
 the effective allow-list is the **intersection** of both. Enforcement
 is server-side (admission webhook + a reconciler re-check), and every
 applied override is audited (field and env var _names_, never values).
+
+:::note Overrides carry literal values, not Secret references
+An override `env` entry may set only a **literal `value`**. `valueFrom`
+sources — `secretKeyRef`, `configMapKeyRef`, `fieldRef`,
+`resourceFieldRef` — are **rejected** in a workspace override (by the
+same admission webhook that enforces the allow-list, and stripped again
+by the operator when the workload is rendered). Wiring a Secret into a
+desktop is a **template** decision: the admin who authors the template
+references it through env `valueFrom` or
+[`credentialsSecretRef`](#credentials), both resolved against the
+workspace's own namespace. The template — authored by an admin,
+typically through GitOps — is therefore the only channel that can point
+a desktop at a cluster Secret; a workspace creator tunes values, never
+references Secrets.
+:::
 
 :::warning
 Allow-listing `volumes` lets users mount arbitrary volume sources —
