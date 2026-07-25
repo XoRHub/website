@@ -210,6 +210,33 @@ these are **immediate**, without waiting for any token to expire:
 | Reset or change a password | Existing sessions end |
 | Sign out | Every session of that account ends |
 
+**When the target is you, you are signed out on the spot** — not on your
+next click. Changing your own password on the Profile page, demoting
+yourself from the Users page, or deactivating / password-resetting your
+own account through the API, ends the session that made the change: the
+portal returns you to the login page with a notice naming what happened,
+rather than looking signed in until something 401s. Signing you back in
+on the spot would not work either: the new session would be issued in the
+same second as the revocation and be refused by it.
+
+:::warning You cannot strand the platform without an administrator
+
+Demoting or deactivating the **last active administrator** is refused:
+
+```
+the platform must keep at least one active administrator — promote another
+account first
+```
+
+There is no way back from zero admins through the product. The
+`WAAS_ADMIN_PASSWORD` bootstrap only ever seeds an **empty** user table —
+it never re-applies to an existing account, so a redeploy would not
+restore your access. Recovering would mean editing the database by hand.
+
+Promote a second administrator *first*, then demote yourself.
+
+:::
+
 :::warning Signing out is global, not per device
 
 Signing out on one browser ends that account's sessions **everywhere**.
