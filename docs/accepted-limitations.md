@@ -79,9 +79,10 @@ usual `[Reason] message` format:
 
 :::danger These rights gate the *field*, not its *content*
 
-`allowedFields` decides **whether** a user may set `volumes` or
-`securityContext`. It does not — and deliberately will not — inspect
-**what** they put in it. Read literally, that means:
+`allowedFields` decides **whether** a user may set `volumes`,
+`securityContext` or `podSecurityContext`. It does not — and
+deliberately will not — inspect **what** they put in it. Read literally,
+that means:
 
 **`volumes`** accepts any Kubernetes volume source. A user who has the
 right can attach:
@@ -95,13 +96,15 @@ volumes:
 
 and read that Secret from their desktop. The workspace namespace
 normally holds at least the registry pull secret and the per-workspace
-SSH key. The same reachability comes through `projected:` (which can
-also re-introduce a ServiceAccount token WaaS otherwise disables) and
-through `csi`, `cephfs`, `rbd` or `iscsi`, all of which carry their own
-`secretRef`.
+SSH key. The same reachability comes through `projected:`, which can
+also re-introduce a ServiceAccount token WaaS otherwise disables. On
+clusters not enforcing Pod Security Admission `restricted`, `cephfs`,
+`rbd` and `iscsi` are reachable too, each with its own `secretRef`.
 
 **`securityContext`** covers the whole struct, `privileged: true`
-included. Only the namespace's Pod Security Admission level stops that.
+included. **`podSecurityContext`** is the pod-level twin — `runAsUser: 0`,
+`fsGroup`, `supplementalGroups`, `sysctls`. Only the namespace's Pod
+Security Admission level stops either.
 
 :::
 
@@ -115,7 +118,7 @@ decision in the wrong place. **Constraining how a delegated pod-spec
 field may be used is cluster administration**, and Kubernetes already
 ships the tools for it.
 
-**What to do instead.** Treat these two rights as equivalent to handing
+**What to do instead.** Treat all three rights as equivalent to handing
 out namespace-level access:
 
 1. **Delegate them only to people you would trust with `kubectl` on the
@@ -128,8 +131,8 @@ out namespace-level access:
    Same for secrets: inject them from the template, never through a
    user override.
 3. **If you must delegate with partial trust, pair it with an admission
-   policy.** A `ValidatingAdmissionPolicy` (in-tree since Kubernetes
-   1.30, no extra component), Kyverno or Gatekeeper, scoped to your
+   policy.** A `ValidatingAdmissionPolicy` (GA in Kubernetes 1.30, beta
+   since 1.28, no extra component), Kyverno or Gatekeeper, scoped to your
    workspace namespaces, is where you express rules like "no `secret`
    volumes in tenant-created pods".
 
@@ -140,10 +143,11 @@ The bootstrap `WorkspacePolicy` shipped by the Helm chart grants
 security contexts. The reference GitOps policy set does the same.
 Granting them is an explicit, auditable change on your side.
 
-Earlier chart versions did include `volumes` in that bootstrap policy.
-If you relied on it, add it back deliberately via
-`defaultPolicy.overrides.allowedFields` or a higher-priority policy —
-after reading the warning above.
+**Chart 0.2.x and earlier did grant `volumes`** in that bootstrap
+policy; 0.3.0 drops it. Upgrading does not rewrite a policy you already
+have, so check `defaultPolicy.overrides.allowedFields` on an existing
+install. If you relied on it, add it back deliberately — after reading
+the warning above.
 
 :::
 

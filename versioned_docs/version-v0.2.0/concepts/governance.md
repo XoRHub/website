@@ -140,6 +140,22 @@ with the template's own list. Absent block = no policy restriction;
 empty list = all overrides forbidden. Platform admins bypass both
 lists; a template's `owner` bypasses the template list only.
 
+:::warning `volumes` and the security contexts are not like the others
+
+Most fields on that list are bounded by their own type — `resources` is
+capped by your limits, `schedule` is a pair of crons. `volumes`,
+`securityContext` and `podSecurityContext` are not: they are
+pod-spec-shaped, and the allow-list gates the field without inspecting
+its content. Granting `volumes` lets a user mount any Secret present in
+the workspace namespace; `securityContext` includes `privileged: true`,
+and `podSecurityContext` includes `runAsUser: 0` and `sysctls`.
+
+Read [what delegating these rights
+grants](../accepted-limitations#before-you-delegate-these-rights-admins)
+before adding any of them to a policy.
+
+:::
+
 ## Everyday admin procedures
 
 **Approve an image**: add a `WorkspaceImage` with the exact ref (Git or
