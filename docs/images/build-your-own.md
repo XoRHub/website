@@ -182,9 +182,14 @@ manifest `description`, truncated), `icon`, `architectures` (from
 `archs:`), a `profile` and a `recommended` deployment block derived
 from the hardening doctrine.
 
-The WaaS api-server periodically syncs that file (see
-`catalogs.waasImages` in the [chart values](../installation/configuration)),
-so a merged image shows up in the workspace-creation picker on its own.
+The WaaS api-server syncs that file (see `catalogs.waasImages` in the
+[chart values](../installation/configuration)), so a merged image shows
+up in the workspace-creation picker on its own. Note the timing: your
+image lands in a catalog file whose **URL does not change**, so it
+appears on the next periodic pass (6 h by default) or when an admin hits
+*Sync now* — the immediate syncs only fire when a `WorkspaceImage`'s
+source itself is created or moved. Details:
+[Bootstrap governance](../admin/bootstrap-governance#the-bootstrap-catalogs--what-approved-means-here).
 Two things are still admin-side in the platform: the
 [`WorkspaceImage`](../reference/crds/workspaceimage) approval if you
 run your own curated catalog, and `allowedGroups` gating for `-dev`

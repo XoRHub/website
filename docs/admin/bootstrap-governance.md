@@ -79,12 +79,33 @@ adminPolicy:
 
 `catalogs.waasImages` (on by default) renders a **registry-wide**
 `WorkspaceImage`: it approves *every* image under `docker.io/xorhub`
-for the protocols `vnc`/`rdp`/`ssh`, and the api-server periodically
-syncs the picker metadata (names, icons, versions, recommended
-sizing/securityContext) from the published
-[`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml)
-(`apiServer.catalogSyncInterval`, default 6 h — cosmetic metadata only,
-the approval itself never changes without an admin).
+for the protocols `vnc`/`rdp`/`ssh`, and the api-server syncs the picker
+metadata (names, icons, versions, recommended sizing/securityContext)
+from the published
+[`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml).
+Cosmetic metadata only — the approval itself never changes without an
+admin.
+
+Three things trigger that sync:
+
+- **creation or a source change**, without waiting for a tick — on the
+  console's PUT (synchronously, so the saved form already shows the
+  entry count) and on a `kubectl apply` alike, where entries appear
+  within seconds. The discriminant is `spec.catalog` itself: editing
+  display fields never refetches, only a **moved source** does;
+- the **periodic pass**, `apiServer.catalogSyncInterval` (default 6 h);
+- the per-image **Sync now** button (`POST
+  /api/v1/admin/images/{name}/sync`), the escape hatch when the manifest
+  *content* changed under an unchanged source — no automatic trigger can
+  see that.
+
+:::caution Setting `catalogSyncInterval` ≤ 0
+It disables **only the ticker** — creation/source-change and manual
+syncs keep working — but nothing then retries a **failed** sync either.
+A transient fetch failure while applying a new image leaves it without
+catalog entries until an admin clicks *Sync now* or the source itself
+moves. Only reasonable where syncs are driven deliberately.
+:::
 
 Implication: combined with the default policy's `images: []`, **any
 authenticated user can run any official XorHub desktop image** on day
