@@ -75,11 +75,75 @@ usual `[Reason] message` format:
 
 :::
 
-:::warning For admins
+### Before you delegate these rights (admins)
 
-Delegating `securityContext` delegates the **whole struct** —
-`privileged: true` included. Only grant it on templates whose audience
-you would trust with `kubectl` on the target namespace.
+:::danger These rights gate the *field*, not its *content*
+
+`allowedFields` decides **whether** a user may set `volumes` or
+`securityContext`. It does not — and deliberately will not — inspect
+**what** they put in it. Read literally, that means:
+
+**`volumes`** accepts any Kubernetes volume source. A user who has the
+right can attach:
+
+```yaml
+volumes:
+  - name: anything
+    secret:
+      secretName: <any Secret sitting in the workspace namespace>
+```
+
+and read that Secret from their desktop. The workspace namespace
+normally holds at least the registry pull secret and the per-workspace
+SSH key. The same reachability comes through `projected:` (which can
+also re-introduce a ServiceAccount token WaaS otherwise disables) and
+through `csi`, `cephfs`, `rbd` or `iscsi`, all of which carry their own
+`secretRef`.
+
+**`securityContext`** covers the whole struct, `privileged: true`
+included. Only the namespace's Pod Security Admission level stops that.
+
+:::
+
+**Why WaaS does not validate the content.** Pod Security Admission is
+not the safety net here: the `restricted` level explicitly **permits**
+`secret` and `projected` volumes, because mounting a Secret from your
+own namespace is ordinary Kubernetes. Re-implementing that judgement
+inside WaaS would mean running a second policy engine over a volume
+schema that grows with every Kubernetes release — and it would put the
+decision in the wrong place. **Constraining how a delegated pod-spec
+field may be used is cluster administration**, and Kubernetes already
+ships the tools for it.
+
+**What to do instead.** Treat these two rights as equivalent to handing
+out namespace-level access:
+
+1. **Delegate them only to people you would trust with `kubectl` on the
+   target namespace.** That is the honest mental model — everything
+   above follows from it.
+2. **Prefer the alternatives when they fit.** A shared filesystem is
+   better served by an admin-provisioned PersistentVolumeClaim, or by a
+   volume declared **in the template**, than by a user-authored inline
+   volume. Both keep you in control of *which* storage is reachable.
+   Same for secrets: inject them from the template, never through a
+   user override.
+3. **If you must delegate with partial trust, pair it with an admission
+   policy.** A `ValidatingAdmissionPolicy` (in-tree since Kubernetes
+   1.30, no extra component), Kyverno or Gatekeeper, scoped to your
+   workspace namespaces, is where you express rules like "no `secret`
+   volumes in tenant-created pods".
+
+:::info The default policy does not grant these
+
+The bootstrap `WorkspacePolicy` shipped by the Helm chart grants
+`env`, `resources` and `schedule` — **not** `volumes`, and never the
+security contexts. The reference GitOps policy set does the same.
+Granting them is an explicit, auditable change on your side.
+
+Earlier chart versions did include `volumes` in that bootstrap policy.
+If you relied on it, add it back deliberately via
+`defaultPolicy.overrides.allowedFields` or a higher-priority policy —
+after reading the warning above.
 
 :::
 

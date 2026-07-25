@@ -140,6 +140,22 @@ with the template's own list. Absent block = no policy restriction;
 empty list = all overrides forbidden. Platform admins bypass both
 lists; a template's `owner` bypasses the template list only.
 
+:::warning `volumes` and `securityContext` are not like the others
+
+Most fields on that list are bounded by their own type — `resources` is
+capped by your limits, `schedule` is a pair of crons. These two are not:
+they are pod-spec-shaped, and the allow-list gates the field without
+inspecting its content. Granting `volumes` lets a user mount any Secret
+present in the workspace namespace; granting `securityContext` includes
+`privileged: true`.
+
+Read [what delegating these rights
+grants](../accepted-limitations#before-you-delegate-these-rights-admins)
+before adding either to a policy. The bootstrap default policy grants
+neither.
+
+:::
+
 ## Everyday admin procedures
 
 **Approve an image**: add a `WorkspaceImage` with the exact ref (Git or
