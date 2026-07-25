@@ -72,6 +72,12 @@ postgres:
   externalURLSecretRef: { name: waas-db, key: database-url }
 ```
 
+An external URL carries its own `sslmode` — securing that connection is
+yours to do. For the **bundled** instance the chart builds the URL and
+pins `postgres.sslMode: disable`: the bundled StatefulSet serves no TLS,
+so that is a description of reality rather than a downgrade. Raise it
+only after wiring certificates into that instance yourself.
+
 ## Workspace placement
 
 Where workspace **workloads** (pods, services, home PVCs) land — the
@@ -167,5 +173,12 @@ Every component exposes `replicas`, `resources`,
 `deploymentLabels/Annotations` and `podLabels/Annotations`
 (`operator.*`, `apiServer.*`, `wwt.*`, `frontend.*`, `guacd.*`,
 `postgres.*`). Session-related tunables live under `apiServer.*`
-(`accessTokenTTL`, `connectionTokenTTL`, `eventsPollInterval`,
-`catalogSyncInterval`).
+(`accessTokenTTL`, `connectionTokenTTL`, `streamTokenTTL`,
+`eventsPollInterval`, `catalogSyncInterval`).
+
+`streamTokenTTL` (2 min) is the lifetime of the token the portal mints
+for the live-events stream. It rides the URL query string — `EventSource`
+cannot set headers — so it lands in proxy access logs, and the short TTL
+is what keeps such a leak worthless. Do not lengthen it to "avoid
+reconnections": the frontend re-mints on every reconnect anyway, so a
+longer TTL buys nothing and only widens the window.
