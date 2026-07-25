@@ -30,6 +30,7 @@ HTTP 403, the `Ready` condition and the portal alike.
 | `QuotaExceeded` | count, running count or aggregate over the policy limit | delete/pause something, or raise the policy. "running workspace quota reached" also denies **resume** — expected with `maxRunningWorkspaces`, pausing another workspace frees the slot (or create the workspace paused) |
 | `IdentityViolation` | `spec.owner` ≠ your authenticated user, or forged identity annotations | set `owner` to your own username; never set `waas.xorhub.io/*` identity annotations |
 | `OverrideNotAllowed` | an override field is not delegated to you | template ∩ policy `overrides.allowedFields` must contain the field |
+| `PlacementDenied` | the `targetNamespace` you asked for is neither the resolved default, nor labeled with your ownership, nor a free name in your `waas-<user>` territory — a name inside your prefix that already belongs to another user is refused | drop `targetNamespace` to take the default, or ask an admin (they may place anywhere) |
 
 A user whose group mirror is empty matches only subjects-less policies —
 that's the "everyone gets the default policy" symptom, not a priority
@@ -44,9 +45,12 @@ bug: groups sync from the IdP at every SSO login (or via admin edit).
   `WAAS_DESKTOP_PASSWORD`** — under the platform this is injected
   automatically; standalone/custom setups must provide it. Legacy
   `VNC_PW`/`RDP_PASSWORD` are refused with an explicit error.
-- Placed template + `CreateContainerConfigError`: a template
-  `secretKeyRef` resolves in the **target** namespace — provision the
-  Secret there. See [Placement](concepts/placement#one-pitfall-to-know-about).
+- `CreateContainerConfigError`: a template `secretKeyRef` resolves in
+  the **target** namespace, never the platform one — and with the
+  per-user default that namespace is not known in advance. Provision the
+  Secret there (External Secrets/Vault), or pin the template to a shared
+  namespace where it is pre-provisioned. See
+  [Placement](concepts/placement#one-pitfall-to-know-about).
 - `PullSecretMissing` condition: the `WorkspaceImage`'s
   `imagePullSecretRef` points at a missing Secret — fail-closed,
   retried automatically once fixed.

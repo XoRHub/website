@@ -66,6 +66,15 @@ spec:
 The webhook checks: same owner, volume actually retained, same target
 namespace. The operator then re-labels the volume as live.
 
+:::caution After a placement-pattern change
+"Same target namespace" is a hard constraint — a PVC is only attachable
+where it lives. Volumes retained under a previous pattern (e.g. the
+shared `waas-workspaces`, the built-in default before chart 0.3.0) do
+**not** appear when the new workspace resolves to `waas-<user>`. Moving
+them is a storage operation: see the [migration
+note](placement#how-the-target-namespace-is-resolved).
+:::
+
 ## Template metadata on home volumes
 
 A template can stamp labels and annotations on the home PVC via

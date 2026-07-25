@@ -83,6 +83,13 @@ workspaces:
   defaultNamespacePattern: "waas-{user}"   # workload namespace pattern
 ```
 
+`waas-{user}` — one namespace per user — is also the built-in default
+since chart 0.3.0 (it was the shared `waas-workspaces` before). A shared
+namespace is still supported, as an explicit choice:
+`defaultNamespacePattern: "waas-workspaces"`. Existing workspaces never
+move, and **retained home volumes do not follow a default change** — see
+the migration note in [Placement](../concepts/placement).
+
 The pattern accepts `{user}`, `{workspace}`, `{templateName}` and
 `{os}` placeholders; an invalid pattern makes the operator and
 api-server **refuse to start** rather than silently fall back. Details
