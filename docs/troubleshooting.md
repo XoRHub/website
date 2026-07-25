@@ -36,6 +36,37 @@ A user whose group mirror is empty matches only subjects-less policies —
 that's the "everyone gets the default policy" symptom, not a priority
 bug: groups sync from the IdP at every SSO login (or via admin edit).
 
+## I was signed out right after changing something about myself
+
+Expected, and it is the platform telling you so rather than hiding it.
+Changing your password (Profile page), demoting yourself (Users page) or
+deactivating / password-resetting your own account through the API
+revokes **every** session of that account — the one you did it from
+included. The portal returns you to the login page with a notice naming
+the reason instead of waiting for the next request to fail.
+
+You cannot be signed back in on the spot: the replacement session would
+be minted in the same second as the revocation and refused by it. Sign in
+again with the new password or the new rights.
+
+Two things this is **not**: editing someone else's account never touches
+your own session, and an edit that revokes nothing (a quota bump on
+yourself, for instance) leaves you signed in. If you were signed out
+without changing anything, read the next section instead.
+
+## I cannot demote or deactivate my own admin account
+
+```
+the platform must keep at least one active administrator — promote another
+account first
+```
+
+You are the last active administrator. The refusal is deliberate: there
+is no in-product way back from zero admins, and `WAAS_ADMIN_PASSWORD`
+only seeds an **empty** user table — a redeploy would not restore the
+role, only a manual database edit would. Promote another account to
+admin, then retry.
+
 ## A user cannot log in via SSO
 
 The login page always shows the same generic message — *"SSO login

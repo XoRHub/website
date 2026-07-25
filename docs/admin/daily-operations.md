@@ -135,6 +135,18 @@ quota) that's fine, just mirror the change in Git.
 - Manual group edits (Users page) are the path when OIDC is not
   configured — and are overwritten at the user's next SSO login when it
   is.
+- **Keep a second administrator.** Demoting or deactivating the last
+  active admin is refused, because nothing in the product could undo it —
+  `WAAS_ADMIN_PASSWORD` only seeds an empty user table, so not even a
+  redeploy brings the role back. Promote the replacement first; the
+  order matters.
+- **Editing your own account signs you out immediately**, by design: a
+  role change, a deactivation or a password reset revokes every session
+  of that account, yours included. From the console that means a
+  self-demotion (the edit dialog carries role, quota and groups);
+  deactivation and password reset are API-only on an existing account.
+  Expect to sign in again — with the new rights — right after doing it.
+  Editing *someone else's* account never touches your own session.
 
 ### Watching the platform
 
