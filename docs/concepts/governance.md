@@ -235,6 +235,17 @@ restore your access. Recovering would mean editing the database by hand.
 
 Promote a second administrator *first*, then demote yourself.
 
+Two cases the rule deliberately leaves alone:
+
+- **Your IdP.** With `adminGroups` configured, removing someone's admin
+  group demotes them at their next login, last admin or not — the
+  directory owns the role. That one *is* recoverable: put the group back
+  and sign in again.
+- **`disableLocalLogin` deployments.** The rule is off entirely, because
+  the break-glass exists there (redeploy without the flag, sign in as the
+  bootstrap admin) and because it would otherwise block the cleanup of a
+  local admin account nobody can sign into any more.
+
 :::
 
 :::warning Signing out is global, not per device
