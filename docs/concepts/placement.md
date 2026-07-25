@@ -158,6 +158,37 @@ get it through `extraAllowedCIDRs`, which wins over the blocked ranges.
 ingress-only policy — the escape hatch for CNIs that do not enforce
 egress rules.
 
+### Pod Security: why `baseline`, and how to raise it
+
+`enforce=baseline` is **not** a statement that desktops need baseline.
+Measured against the published catalog, the images start and serve
+normally under `restricted` given `allowPrivilegeEscalation: false`,
+`capabilities.drop: [ALL]` and `seccompProfile: RuntimeDefault`.
+
+The level is `baseline` because **choosing it is the cluster
+administrator's call, not the platform's** — the same reason the desktop
+container ships no `securityContext` of its own. A hardened cluster
+usually fills that field with a cluster-wide mutation policy (Kyverno,
+`MutatingAdmissionPolicy`, Gatekeeper), and those are almost always
+written *add-if-absent*: a pre-filled field would silently take desktop
+pods out of your policy. `warn=restricted` is the canary — the cluster
+tells you what raising `enforce` would cost, without breaking a session.
+
+To raise it:
+
+```sh
+kubectl label ns <workspace-namespace> \
+  pod-security.kubernetes.io/enforce=restricted --overwrite
+```
+
+The bootstrap is create-only, so the operator never reverts your label.
+Pair it with a template `workload.securityContext` (or a mutation
+policy) supplying the three controls above, otherwise the namespace
+refuses its own pods. The label cannot be set through
+`placement.namespaceLabels` — every `*.kubernetes.io` key is denied
+there, so a template author, who is not necessarily a platform admin,
+can never lower a namespace to `privileged`.
+
 ## Namespace cleanup
 
 `placement.cleanup` on the template, **frozen on the namespace at
