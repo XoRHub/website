@@ -120,6 +120,20 @@ default -o jsonpath='{.spec.clusterIP}'`. Emptying the list carves out
 nothing rather than restoring the defaults. Rationale and the full rule
 set: [Placement](../concepts/placement#what-desktops-can-reach-the-waas-default-ingress-policy).
 
+## Remote-workspace target guard
+
+```yaml
+apiServer:
+  clusterDomain: ""        # empty = discovered from the pod's resolv.conf
+  remoteBlockedCIDRs: []   # add your cluster's pod and service CIDRs
+```
+
+Remote workspaces may not point back at the cluster; the built-in filter
+(loopback, link-local/IMDS, kube-apiserver ClusterIP, in-cluster names)
+cannot know your pod/service CIDRs, so list them here. Scope and
+deliberate exceptions: [Remote
+workspaces](../guides/remote-workspaces#targets-the-api-server-refuses).
+
 ## Bootstrap policies and catalogs
 
 ```yaml
