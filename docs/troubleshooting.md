@@ -36,6 +36,28 @@ A user whose group mirror is empty matches only subjects-less policies —
 that's the "everyone gets the default policy" symptom, not a priority
 bug: groups sync from the IdP at every SSO login (or via admin edit).
 
+## A user cannot log in via SSO
+
+The login page always shows the same generic message — *"SSO login
+failed for this account — contact an administrator"* — because the
+caller is not authenticated yet and a precise message would disclose
+another account. **The reason is in the audit trail**, and there are two
+of them:
+
+| Audit action | Meaning | Fix |
+|---|---|---|
+| `user.sso_link_conflict` | the IdP's username claim matches an **existing** account bound to a different subject (or a local one). Treated as an attempted takeover — many IdPs let users pick their own username claim | rename or delete the conflicting account; never repoint the IdP's `sub` |
+| `user.sso_placement_conflict` | the username is distinct, but it **normalizes** onto an existing account's namespace (`alice.smith` vs `alice_smith`) | see [how names are built](concepts/placement#name-rules) — usually a stale local account created before SSO was wired; delete it, or rename one side in the directory |
+
+```sh
+# both carry the two usernames and the namespace in their detail
+curl -s -H "Authorization: Bearer $TOKEN" \
+  'https://waas.example.com/api/v1/admin/audit-logs?action=user.sso_placement_conflict' | jq
+```
+
+A user in a non-Latin script (`иван`, `王五`) is **never** refused for
+this reason — those resolve through the account id instead.
+
 ## Workspace Running but not connectable
 
 - `Ready=True` but `ConnectionReady=False`: the pod runs but the
