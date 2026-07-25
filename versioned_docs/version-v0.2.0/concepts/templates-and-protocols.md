@@ -160,8 +160,10 @@ applied override is audited (field and env var _names_, never values).
 
 :::warning
 Allow-listing `volumes` lets users mount arbitrary volume sources —
-including `hostPath`. Only enable it on templates aimed at trusted
-groups.
+including `hostPath`, and including any Secret in the workspace
+namespace. Only enable it on templates aimed at trusted groups; see
+[what delegating that right
+grants](../accepted-limitations#before-you-delegate-these-rights-admins).
 :::
 
 In the portal, users who hold override rights see an **Advanced

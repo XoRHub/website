@@ -169,10 +169,12 @@ by the operator when the workload is rendered). Wiring a Secret into a
 desktop is a **template** decision: the admin who authors the template
 references it through env `valueFrom` or
 [`credentialsSecretRef`](#credentials), both resolved against the
-workspace's own namespace. The template — authored by an admin,
-typically through GitOps — is therefore the only channel that can point
-a desktop at a cluster Secret; a workspace creator tunes values, never
-references Secrets.
+workspace's own namespace. Through `env`, therefore, a workspace creator
+tunes values and never references Secrets.
+
+This holds for `env` only. A delegated `volumes` override reaches
+Secrets directly, by mounting them — see [what delegating that right
+grants](../accepted-limitations#before-you-delegate-these-rights-admins).
 :::
 
 :::warning

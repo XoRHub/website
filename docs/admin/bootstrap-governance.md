@@ -37,7 +37,7 @@ may:
 | Idle suspend | paused after **2 h** without a session (compute freed, home kept) |
 | Max lifetime | deleted after **336 h / 14 days** — **home volume included** (TTL contract) |
 | Clipboard | both directions allowed |
-| Template overrides | `env`, `resources`, `schedule`, `volumes` — still intersected with each template's own allow-list |
+| Template overrides | `env`, `resources`, `schedule` — still intersected with each template's own allow-list |
 | Remote workspaces | **off** |
 
 Two things worth a second look before going to production:
@@ -45,10 +45,13 @@ Two things worth a second look before going to production:
 - **`maxLifetime: 336h` destroys data**: a policy TTL deletes the home
   volume along with the workspace — that is the documented contract of
   a TTL. If your users keep long-lived desktops, raise or remove it.
-- **`volumes` is in the default override list**: on any template that
-  *also* delegates `volumes`, a user can mount arbitrary volume
-  sources (including `hostPath`). The template list is the effective
-  gate — just be aware the policy side is open by default.
+- **`volumes` is no longer in the default override list**: chart 0.2.x
+  and earlier granted it, so an upgraded install may still carry it in
+  `defaultPolicy.overrides.allowedFields`. Check yours. Granting
+  `volumes` — or either security context — on a template *and* a policy
+  lets a user mount arbitrary volume sources, including any Secret in
+  the workspace namespace; see [what delegating these rights
+  grants](../accepted-limitations#before-you-delegate-these-rights-admins).
 
 ## The admin policy — off by default, and why you probably want it
 
