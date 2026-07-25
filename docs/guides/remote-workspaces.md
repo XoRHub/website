@@ -26,6 +26,37 @@ managed elsewhere.
 - Clipboard policies apply to remote sessions exactly as to provisioned
   ones.
 
+## Targets the api-server refuses
+
+A "remote machine" pointed at the cluster itself would turn the feature
+into a pivot into your own network, so the api-server rejects:
+loopback, link-local (the cloud IMDS at `169.254.169.254` included), the
+kube-apiserver ClusterIP, single-label names, `*.svc` and
+`*.<cluster domain>` names, plus any CIDR listed in
+`apiServer.remoteBlockedCIDRs`. Add your cluster's **pod and service
+CIDRs** there — they cannot be discovered from inside a pod. The cluster
+DNS domain is auto-discovered from the api-server pod's
+`/etc/resolv.conf` (`cluster.local` fallback); override it with
+`apiServer.clusterDomain` only if that discovery is wrong for your
+cluster.
+
+The check runs at create, update **and** connect, so entries registered
+before the guard existed are covered too. Two deliberate
+non-restrictions:
+
+- **RFC1918 addresses stay allowed** — a legitimate remote machine
+  commonly sits on a private LAN reached over VPN or peering. That is
+  also why `remoteBlockedCIDRs` does not default to those ranges.
+- **A hostname that fails to resolve stays allowed** — registering a
+  machine that is off, or behind DNS the api-server cannot see, must
+  keep working.
+
+:::warning Guardrail, not a security boundary
+guacd re-resolves the name when it dials, so DNS rebinding bypasses the
+check. The structural answer is an egress NetworkPolicy on the platform
+pods (guacd/wwt), which does not exist yet.
+:::
+
 ## Wake-on-LAN
 
 A remote machine with a registered MAC address can be woken from the

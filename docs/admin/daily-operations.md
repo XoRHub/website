@@ -89,6 +89,13 @@ quota) that's fine, just mirror the change in Git.
   images appear in the picker on their own (catalog sync) — review the
   [waas-images releases](https://github.com/XoRHub/waas-images) rather
   than the picker.
+- **A new or repointed image syncs immediately** — console save or
+  `kubectl apply`, both show the discovered entries within seconds, and
+  the catalog table surfaces `lastSyncTime`, the entry count and
+  `lastSyncError`. Use **Sync now** when the catalog file was
+  re-published under the *same* URL (nothing can observe that), or to
+  retry after a failed fetch. See [the sync
+  triggers](bootstrap-governance#the-bootstrap-catalogs--what-approved-means-here).
 
 ### Policy and quota care
 

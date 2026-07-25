@@ -72,6 +72,12 @@ postgres:
   externalURLSecretRef: { name: waas-db, key: database-url }
 ```
 
+An external URL carries its own `sslmode` — securing that connection is
+yours to do. For the **bundled** instance the chart builds the URL and
+pins `postgres.sslMode: disable`: the bundled StatefulSet serves no TLS,
+so that is a description of reality rather than a downgrade. Raise it
+only after wiring certificates into that instance yourself.
+
 ## Workspace placement
 
 Where workspace **workloads** (pods, services, home PVCs) land — the
@@ -83,10 +89,56 @@ workspaces:
   defaultNamespacePattern: "waas-{user}"   # workload namespace pattern
 ```
 
+`waas-{user}` — one namespace per user — is also the built-in default
+since chart 0.3.0 (it was the shared `waas-workspaces` before). A shared
+namespace is still supported, as an explicit choice:
+`defaultNamespacePattern: "waas-workspaces"`. Existing workspaces never
+move, and **retained home volumes do not follow a default change** — see
+the migration note in [Placement](../concepts/placement).
+
 The pattern accepts `{user}`, `{workspace}`, `{templateName}` and
 `{os}` placeholders; an invalid pattern makes the operator and
 api-server **refuse to start** rather than silently fall back. Details
 and the precedence chain: [Placement](../concepts/placement).
+
+## Desktop egress
+
+Placed namespaces get a default-deny egress policy: DNS always, then the
+internet minus the blocked ranges.
+
+```yaml
+operator:
+  desktopEgress:
+    enabled: true            # false = historical ingress-only policy (CNI escape hatch)
+    allowInternet: true      # false = DNS + extraAllowedCIDRs only
+    blockedCIDRs:            # defaults: cloud IMDS + RFC1918
+      - 169.254.169.254/32
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    extraAllowedCIDRs: []    # wins over blockedCIDRs (your mirrors, internal Git…)
+```
+
+The defaults assume RFC1918 cluster networks. **On GKE** (Service CIDR
+`34.118.224.0/20` by default) append your own range or the kube-apiserver
+stays reachable from desktops — check with `kubectl get svc kubernetes -n
+default -o jsonpath='{.spec.clusterIP}'`. Emptying the list carves out
+nothing rather than restoring the defaults. Rationale and the full rule
+set: [Placement](../concepts/placement#what-desktops-can-reach-the-waas-default-ingress-policy).
+
+## Remote-workspace target guard
+
+```yaml
+apiServer:
+  clusterDomain: ""        # empty = discovered from the pod's resolv.conf
+  remoteBlockedCIDRs: []   # add your cluster's pod and service CIDRs
+```
+
+Remote workspaces may not point back at the cluster; the built-in filter
+(loopback, link-local/IMDS, kube-apiserver ClusterIP, in-cluster names)
+cannot know your pod/service CIDRs, so list them here. Scope and
+deliberate exceptions: [Remote
+workspaces](../guides/remote-workspaces#targets-the-api-server-refuses).
 
 ## Bootstrap policies and catalogs
 
@@ -121,5 +173,12 @@ Every component exposes `replicas`, `resources`,
 `deploymentLabels/Annotations` and `podLabels/Annotations`
 (`operator.*`, `apiServer.*`, `wwt.*`, `frontend.*`, `guacd.*`,
 `postgres.*`). Session-related tunables live under `apiServer.*`
-(`accessTokenTTL`, `connectionTokenTTL`, `eventsPollInterval`,
-`catalogSyncInterval`).
+(`accessTokenTTL`, `connectionTokenTTL`, `streamTokenTTL`,
+`eventsPollInterval`, `catalogSyncInterval`).
+
+`streamTokenTTL` (2 min) is the lifetime of the token the portal mints
+for the live-events stream. It rides the URL query string — `EventSource`
+cannot set headers — so it lands in proxy access logs, and the short TTL
+is what keeps such a leak worthless. Do not lengthen it to "avoid
+reconnections": the frontend re-mints on every reconnect anyway, so a
+longer TTL buys nothing and only widens the window.

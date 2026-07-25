@@ -119,6 +119,11 @@ policies (the "everyone gets the default policy" symptom) — check the
 provider's `profile` scope mapping is selected, then re-login (groups
 sync at login, not continuously).
 
+The round-trip ends on the portal with a clean URL: the session arrives
+as an httpOnly cookie, never in the address bar, and WaaS keeps no token
+from Authentik — the IdP session is used once, at sign-in. See
+[Sessions](../concepts/governance#sessions).
+
 ## Going OIDC-only
 
 Once SSO is proven, `disableLocalLogin: true` turns off local
