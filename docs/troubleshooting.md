@@ -55,6 +55,22 @@ bug: groups sync from the IdP at every SSO login (or via admin edit).
   `imagePullSecretRef` points at a missing Secret — fail-closed,
   retried automatically once fixed.
 
+## The desktop can't reach something on the network
+
+Placed namespaces carry a **default-deny egress** policy: DNS is always
+open, the public internet is allowed minus
+`operator.desktopEgress.blockedCIDRs` — the cloud IMDS and, by default,
+every RFC1918 range. So an internal service (package mirror, private
+Git, on-prem API) is blocked until it is listed in
+`operator.desktopEgress.extraAllowedCIDRs`, which wins over the blocked
+ranges. Symptoms are timeouts, not errors: name resolution keeps
+working. Full rule set:
+[Placement](concepts/placement#what-desktops-can-reach-the-waas-default-ingress-policy).
+
+If your CNI does not enforce NetworkPolicy **egress**, the policy is
+inert — `operator.desktopEgress.enabled: false` makes that explicit
+rather than leaving a policy you believe in.
+
 ## Video works, no sound
 
 `enable-audio` alone is not enough over VNC: the template's `vnc`

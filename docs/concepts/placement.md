@@ -91,10 +91,12 @@ admin edits are not overwritten):
 - A **`waas-quota` ResourceQuota** derived from the owner's policy
   aggregate caps, personal namespaces only (defense in depth — the
   webhook remains the primary enforcement).
-- A **default-deny ingress NetworkPolicy**: only the platform namespace
-  (where guacd/wwt run) can reach the desktops. Egress stays open.
-- **No user RBAC**: users never talk to the Kubernetes API directly —
-  everything goes through the portal or your GitOps pipeline.
+- A **`waas-default-ingress` NetworkPolicy**, ingress *and* egress
+  (see below). It is the one bootstrap object the operator **reconciles**
+  — drift on it is healed.
+- **No user RBAC**, and no ServiceAccount token mounted in the desktop
+  pod: users never talk to the Kubernetes API directly — everything goes
+  through the portal or your GitOps pipeline.
 
 Namespace metadata is only one of the template's three metadata
 surfaces, each with its own sync model: namespace labels/annotations
@@ -120,6 +122,41 @@ volumes included: the prefix is a name rule, not proof of ownership, so
 the webhook refuses it with `PlacementDenied`. Anti-spoofing is
 webhook-enforced, fail-closed. System namespaces (`kube-*`, the platform
 namespace) are refused for everyone.
+
+### What desktops can reach: the `waas-default-ingress` policy
+
+Despite its (historical, kept to avoid orphaning policies already
+stamped on existing namespaces) name, it shapes both directions:
+
+- **Ingress**: denied except from the CR namespace and the release
+  namespace — that's where guacd/wwt run, and they need to reach the
+  desktops.
+- **Egress**: **default-deny** as well. DNS (53 UDP+TCP, any
+  destination) is always allowed — a desktop that cannot resolve is a
+  broken desktop — then the public internet minus
+  `operator.desktopEgress.blockedCIDRs`, plus any `extraAllowedCIDRs`.
+
+The blocked defaults are the cloud IMDS `/32` and the RFC1918 ranges, so
+a desktop reaches neither the kube-apiserver nor the platform namespace.
+
+:::warning Those defaults assume RFC1918 cluster networks
+On a provider that puts the Service CIDR outside RFC1918 — GKE defaults
+to `34.118.224.0/20` — the kube-apiserver stays reachable from desktops
+until you append your own range. Check it:
+
+```sh
+kubectl get svc kubernetes -n default -o jsonpath='{.spec.clusterIP}'
+```
+
+Emptying `blockedCIDRs` means "carve out **nothing**", not "use the
+defaults" — override entries, never reset the key.
+:::
+
+Desktops needing an internal service (a package mirror, a private Git)
+get it through `extraAllowedCIDRs`, which wins over the blocked ranges.
+`operator.desktopEgress.enabled: false` falls back to the historical
+ingress-only policy — the escape hatch for CNIs that do not enforce
+egress rules.
 
 ## Namespace cleanup
 

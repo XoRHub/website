@@ -95,6 +95,31 @@ The pattern accepts `{user}`, `{workspace}`, `{templateName}` and
 api-server **refuse to start** rather than silently fall back. Details
 and the precedence chain: [Placement](../concepts/placement).
 
+## Desktop egress
+
+Placed namespaces get a default-deny egress policy: DNS always, then the
+internet minus the blocked ranges.
+
+```yaml
+operator:
+  desktopEgress:
+    enabled: true            # false = historical ingress-only policy (CNI escape hatch)
+    allowInternet: true      # false = DNS + extraAllowedCIDRs only
+    blockedCIDRs:            # defaults: cloud IMDS + RFC1918
+      - 169.254.169.254/32
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    extraAllowedCIDRs: []    # wins over blockedCIDRs (your mirrors, internal Git…)
+```
+
+The defaults assume RFC1918 cluster networks. **On GKE** (Service CIDR
+`34.118.224.0/20` by default) append your own range or the kube-apiserver
+stays reachable from desktops — check with `kubectl get svc kubernetes -n
+default -o jsonpath='{.spec.clusterIP}'`. Emptying the list carves out
+nothing rather than restoring the defaults. Rationale and the full rule
+set: [Placement](../concepts/placement#what-desktops-can-reach-the-waas-default-ingress-policy).
+
 ## Bootstrap policies and catalogs
 
 ```yaml
