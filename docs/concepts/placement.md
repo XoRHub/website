@@ -39,7 +39,7 @@ distinct values can never silently merge:
 
 | Token | Source |
 |---|---|
-| `{user}` | IdP username (trusted identity) |
+| `{user}` | username — the account's label, not its internal id |
 | `{workspace}` | workspace displayName |
 | `{templateName}` | template `metadata.name` |
 | `{os}` | template `spec.os` (`linux`/`windows`) |
@@ -75,6 +75,121 @@ Keeping the shared pattern, as above, avoids the question entirely.
 
 The portal shows the resolved namespace at creation time, and the
 template editor lists the valid placeholders.
+
+## How names are built — and what it constrains {#name-rules}
+
+A Kubernetes namespace name is a **DNS-1123 label**: lowercase letters,
+digits and dashes, 63 characters maximum. Nothing else. Every value that
+enters a name is therefore normalized first (accents folded, uppercase
+lowered, anything else collapsed into `-`), and that normalization is
+**lossy**. Three consequences are worth knowing before you pick a
+pattern or hand out usernames.
+
+### 1. Two usernames must not normalize to the same thing
+
+`alice.smith`, `alice_smith`, `alice-smith` and `Alice Smith` all become
+`alice-smith`. Your directory treats them as four distinct people; the
+namespace cannot. WaaS refuses the second account rather than renaming
+it behind your back:
+
+- **creating a local account** returns `409` and names both sides:
+
+  ```
+  username "alice_smith" collides with the existing account "alice.smith":
+  both resolve to the personal namespace "waas-alice-smith" — pick a username
+  that differs by more than case, accents or separators
+  ```
+
+- **first SSO login** fails with the generic
+  *"SSO login failed for this account — contact an administrator"*. The
+  detail never reaches the login page (the caller is not authenticated
+  yet and it would disclose another account's username) — it is in the
+  audit trail, action `user.sso_placement_conflict`:
+
+  ```
+  username "alice.smith" resolves to the personal namespace "waas-alice-smith",
+  already used by account "alice-smith"
+  ```
+
+**Recommendation.** Treat it as directory hygiene, not as a WaaS
+setting. Directories already disambiguate homonyms (`jdoe`, `jdoe2`) —
+apply the same convention here, and make usernames differ by more than
+case, accents or separators. The most common way to hit this is a
+**local account created before SSO was wired**, then re-created by the
+IdP under a different separator: delete the stale local account rather
+than renaming the person in the directory.
+
+:::note This rule holds whatever your pattern is
+
+The check does not ask whether the resolved namespace is per-user. Two
+accounts indistinguishable in every DNS-derived name are a defect on
+their own, and a template added later can put `{user}` back into a
+pattern at any time.
+
+:::
+
+### 2. Usernames in a non-Latin script are handled, not refused
+
+`иван`, `王五`, `Ωμέγα` and `علي` leave **no** usable character at all —
+Kubernetes accepts none of them in a namespace name, nor in a label
+value (only annotation values are free-form UTF-8, which is where WaaS
+keeps the username itself). Rather than collapsing every such account
+into one namespace, `{user}` resolves through the account id — its first
+and last groups:
+
+```
+account a1b2c3d4-5e6f-7890-abcd-ef1234567890  →  waas-a1b2c3d4-ef1234567890
+account f0e9d8c7-6b5a-4321-9876-543210fedcba  →  waas-f0e9d8c7-543210fedcba
+```
+
+Predictable rather than hashed, on purpose: you can go from a namespace
+back to its owner with a prefix query, and the name derives from the
+same key as the namespace's `waas.xorhub.io/owner` label. Nothing to
+configure, no account is ever refused for this reason.
+
+### 3. Long values get truncated — and each token's share is fixed
+
+The 63 characters are split as `(63 − literals) ÷ number of tokens`,
+computed from the **pattern alone**. A value that fits is kept whole; a
+value that overflows its share is cut and given a short hash so two long
+values can never silently merge:
+
+| Pattern | Tokens | Budget each | A value is hashed above |
+|---|---|---|---|
+| `waas-{user}` (built-in) | 1 | 58 | 58 characters — unreachable in practice |
+| `waas-{user}-{workspace}` | 2 | 28 | 28 characters |
+| `waas-{os}-{templateName}` | 2 | 28 | 28 characters |
+| `waas-{user}-{templateName}-{workspace}` | 3 | 18 | 18 characters |
+
+The share is **fixed**: a short value does not lend its unused
+characters to a long one.
+
+```
+pattern  waas-{user}-{workspace}     user "alice", 28 characters each
+
+"Poste de travail graphique"        → waas-alice-poste-de-travail-graphique
+"Poste de travail graphique Ubuntu" → waas-alice-poste-de-travail-graph-8b0d3
+                                       hashed, although the full name would
+                                       have fit in 44 of the 63 available
+```
+
+This is deliberate: making the split adaptive would move the **future**
+workspaces of users whose names are truncated today, for a cosmetic
+gain.
+
+**Recommendations.**
+
+- **Prefer few tokens.** Each one you add roughly halves, then thirds,
+  the room. The built-in `waas-{user}` is the only shape where
+  truncation is effectively out of reach.
+- **Think twice before putting `{workspace}` in a pattern.** Display
+  names are typed by users and routinely exceed 28 characters, so hashed
+  namespaces become the norm rather than the exception. `{templateName}`
+  and `{os}` are admin-controlled and short — much safer companions.
+- **Check the preview.** The creation dialog shows the resolved
+  namespace before you commit, and the template editor shows it for the
+  pattern you are writing. A hash in the preview is your signal that the
+  pattern is too tight for the values it will meet.
 
 ## What the operator bootstraps in a new namespace
 
