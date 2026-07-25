@@ -182,6 +182,66 @@ the source of truth, Git seeds them. If ArgoCD manages them, a UI edit
 is a manual override that the next sync overwrites; configure
 `selfHeal`/`ignoreDifferences` accordingly.
 
+## Sessions
+
+Signing in — locally or through SSO — sets an **httpOnly session
+cookie**. Nothing else: the portal stores no token, in `localStorage` or
+anywhere else, and page scripts cannot read the cookie. There is no
+credential in the browser for a malicious script to steal.
+
+What that means day to day:
+
+- **Reloading the page keeps you signed in.** The cookie survives it; the
+  portal re-reads your profile on load.
+- **Nothing appears in the URL.** After an SSO round-trip you land on the
+  portal with a clean address bar.
+- Sessions last `apiServer.accessTokenTTL` (8 h by default). That bound is
+  a fallback, not the security control — see below.
+
+### Changes take effect on the next request, not in 8 hours
+
+Every authenticated request re-checks the account behind the session. So
+these are **immediate**, without waiting for any token to expire:
+
+| Action | Effect |
+|---|---|
+| Deactivate a user | Their next request is refused |
+| Change a user's role | Their session stops; they sign in again with the new role |
+| Reset or change a password | Existing sessions end |
+| Sign out | Every session of that account ends |
+
+:::warning Signing out is global, not per device
+
+Signing out on one browser ends that account's sessions **everywhere**.
+That is the intended default for a security control — per-device sign-out
+would require the platform to track each session individually, which it
+deliberately does not.
+
+:::
+
+**One residual to know**: a desktop connection already open keeps running
+until it is closed. The tunnel is authorized once, when the connection
+opens, so revocation gates every *new* connection rather than tearing
+down a live one. Pause or delete the workspace to cut an in-progress
+session immediately.
+
+### Scripts and CI
+
+The cookie is for browsers. Anything else authenticates with the
+`Authorization: Bearer` header, using the token `POST /api/v1/auth/login`
+returns:
+
+```sh
+TOKEN=$(curl -s -X POST https://waas.example.com/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"ci","password":"…"}' | jq -r .data.accessToken)
+
+curl -H "Authorization: Bearer $TOKEN" https://waas.example.com/api/v1/workspaces
+```
+
+The same rules apply to it — deactivate the account and the token stops
+working on the next call.
+
 ## Audit
 
 The api-server journals `workspace.created/denied/paused/resumed`,
