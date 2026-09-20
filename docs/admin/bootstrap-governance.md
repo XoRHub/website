@@ -79,7 +79,8 @@ adminPolicy:
 
 `catalogs.waasImages` (on by default) renders a **registry-wide**
 `WorkspaceImage`: it approves *every* image under `docker.io/xorhub`
-for the protocols `vnc`/`rdp`/`ssh`, and the api-server syncs the picker
+for the `vnc` protocol — the only one those Linux images serve — and
+the api-server syncs the picker
 metadata (names, icons, versions, recommended sizing/securityContext)
 from the published
 [`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml).

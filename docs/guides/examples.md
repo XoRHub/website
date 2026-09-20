@@ -68,7 +68,7 @@ metadata:
 spec:
   displayName: "Ubuntu 24.04 — XFCE Desktop"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1
+  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
   port: 5901
   homeSize: 10Gi
   resources:
@@ -76,18 +76,18 @@ spec:
     limits: { cpu: "2", memory: 4Gi }
 ```
 
-## WorkspaceTemplate — multi-protocol with schedule and overrides
+## WorkspaceTemplate — audio, schedule and overrides
 
 ```yaml
 apiVersion: waas.xorhub.io/v1alpha1
 kind: WorkspaceTemplate
 metadata:
-  name: ubuntu-desktop-full
+  name: ubuntu-desktop-advanced
   namespace: waas
 spec:
-  displayName: "Ubuntu 24.04 — VNC + RDP + SSH"
+  displayName: "Ubuntu 24.04 — audio, schedule, overrides"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1
+  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
   homeSize: 20Gi
   homeVolume:
     labels:                          # stamped on the home PVC, synced in place
@@ -104,22 +104,27 @@ spec:
       params:
         color-depth: "24"
       userParams: [cat:display, cat:audio]
-    - name: rdp
-      port: 3389
-    - name: ssh                      # keypair auto-generated per workspace
-      port: 2222
   env:
     - name: WAAS_VNC_RESOLUTION
       value: "1920x1080"
-    - name: WAAS_RDP_ENABLED
-      value: "1"
   schedule:
     timezone: Europe/Paris
     uptime: ["0 8 * * 1-5"]
     downtime: ["0 20 * * *"]
   overrides:
-    allowedFields: [env, resources, protocol, protocolParams, schedule]
+    allowedFields: [env, resources, protocolParams, schedule]
 ```
+
+:::note Which protocol names are accepted
+`protocols[].name` is `vnc` or `kasmvnc` on an `os: linux` template.
+`rdp` is reserved for `os: windows` templates (KubeVirt VMs — **Not
+Implemented Yet**) and denied at admission on a linux one; `ssh` is not
+an in-cluster protocol at all — it belongs to
+[remote workspaces](remote-workspaces). See
+[Templates and protocols](../concepts/templates-and-protocols#protocols)
+and the exact
+[denial messages](../troubleshooting#template-denied-rdp-on-a-linux-template-or-ssh-anywhere-in-cluster).
+:::
 
 ## WorkspaceTemplate — explicit credentials from a Secret
 
@@ -132,7 +137,7 @@ metadata:
 spec:
   displayName: "Ubuntu — team credentials"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1
+  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
   homeSize: 10Gi
   protocols:
     - name: vnc
@@ -158,9 +163,9 @@ metadata:
   namespace: waas
 spec:
   displayName: "Ubuntu 24.04 XFCE"
-  image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1   # exact ref; pin the digest
+  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0   # exact ref; pin the digest
   enabled: true
-  protocols: [vnc, rdp, ssh]
+  protocols: [vnc]                 # what the image serves; ssh is never listed here
   architectures: [amd64, arm64]
   resources:
     default: { cpu: "1", memory: 2Gi }

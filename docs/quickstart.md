@@ -68,9 +68,9 @@ metadata:
   namespace: waas
 spec:
   displayName: "Ubuntu 24.04 — XFCE Desktop"
-  description: "Full XFCE desktop over VNC (recommended protocol for Linux)."
+  description: "Full XFCE desktop over VNC."
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:2.0.1
+  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
   port: 5901
   homeSize: 10Gi
   resources:
@@ -82,10 +82,10 @@ spec:
 kubectl apply -f template.yaml
 ```
 
-No credentials to configure: when a template exposes VNC/RDP without an
-explicit password source, the platform generates a random per-workspace
-password, injects it into the pod and resolves it server-side at
-connect time. See
+No credentials to configure: when a Linux template exposes VNC (or
+KasmVNC) without an explicit password source, the platform generates a
+random per-workspace password, injects it into the pod and resolves it
+server-side at connect time. See
 [Templates and protocols](concepts/templates-and-protocols#credentials)
 for the explicit-Secret pattern.
 

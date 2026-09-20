@@ -29,6 +29,17 @@ documented in the site's
 [CONTRIBUTING](https://github.com/XoRHub/website/blob/main/CONTRIBUTING.md).
 :::
 
+:::caution In-cluster protocols: the reference lags the prose
+These pages are generated from the **last released** CRDs (`v0.2.0`),
+so `WorkspaceTemplate` and `WorkspaceImage` still show `ssh` among the
+protocol values and a four-key credentials Secret. On the current
+platform an in-cluster template declares `vnc` or `kasmvnc` (Linux),
+`rdp` is reserved for Windows VMs, `ssh` exists only for remote
+workspaces, and the credentials Secret carries `username`/`password`
+— [Templates and protocols](../../concepts/templates-and-protocols.md#protocols)
+is right until the next release is synced here.
+:::
+
 Each page shows the CRD as **one annotated YAML manifest**:
 
 - Every field is a real YAML key, with its API documentation as `#`

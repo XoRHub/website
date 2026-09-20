@@ -343,9 +343,9 @@ What the per-user default changes is that the target namespace is no
 longer **known in advance**, so the Secret cannot simply be
 pre-provisioned once. Two supported ways out: provision it into the
 target namespaces (External Secrets/Vault), or pin the template to a
-shared namespace known in advance where the Secret is pre-provisioned —
-what the dev `dev-ssh` template does with
-`placement.namespace: waas-workspaces`.
+shared namespace known in advance where the Secret is pre-provisioned
+(`placement.namespace: waas-workspaces`, an explicit literal instead of
+the `waas-{user}` default).
 
 Protocol `credentialsSecretRef`s are **not** affected — they resolve
 server-side in the platform namespace.

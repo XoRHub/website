@@ -19,10 +19,10 @@ Three layers, each a directory of image families, each family described
 by a `manifest.yaml`:
 
 ```
-base/       core-* images — Xvnc + openbox, optional xrdp/sshd (internal parents)
+base/       core-* images — Xvnc + openbox, VNC only (internal parents)
 desktop/    XFCE on top of a core — the published OS desktops
 apps/       single-app kiosks on the bare core — what you'll usually add
-            (devtools is the exception: a full desktop on the XFCE parent)
+            (devtools is the exception: a full desktop built from ubuntu-desktop-noble)
 images.yaml global build config: OS matrix, default archs, scan gate
 ```
 
@@ -140,11 +140,11 @@ concern a derived image in practice:
   `readOnlyRootFilesystem: true`. Render mutable config into tmpfs at
   boot (the base entrypoint shows the pattern).
 - **`WAAS_*` env contract** — the base entrypoint already handles
-  `WAAS_DESKTOP_PASSWORD` (required, fail-closed), resolution, protocol
-  toggles; don't interpret non-`WAAS_` variables at runtime.
-- **Health = TCP probe** on the protocol port — Xvnc listening on 5901
-  is your readiness; don't ship an app that must be "warm" before VNC
-  accepts.
+  `WAAS_DESKTOP_PASSWORD` (required, fail-closed), resolution and
+  audio; don't interpret non-`WAAS_` variables at runtime.
+- **Health = TCP probe** on `5901` — Xvnc accepting connections is your
+  readiness, and the only listener the platform expects; don't ship an
+  app that must be "warm" before VNC accepts.
 - **No new setuid/setgid binaries** — the smoke test fails on any
   (exactly `/usr/bin/sudo` allowed on `-dev` profiles).
 - **Boot-time customization** without rebuilding: workspaces can mount
@@ -158,13 +158,16 @@ Same scripts as CI, so "works locally" means "works in CI":
 ```sh
 make build IMAGE=myapp     # build (compiles the recipe first if any)
 make run   IMAGE=myapp     # run it — VNC on localhost:15901, password "devpassword"
-make smoke IMAGE=myapp     # protocol handshake + hardening checks
+make smoke IMAGE=myapp     # RFB banner + hardening checks
 make lint                  # hadolint + shellcheck over the whole tree
 ```
 
-`make smoke` is the same gate CI applies: the image must boot with
+`make smoke` runs the same script CI does: the image must boot with
 `--read-only --cap-drop ALL --security-opt no-new-privileges`, answer a
-real RFB/X.224 handshake, and carry an empty setuid set. If your image
+real RFB banner, and carry an empty setuid set. CI adds a PulseAudio
+handshake on 4713 only for the images whose manifest asks for it
+(`smoke: {audio: true}` — the cores and the OS desktops); an `apps/`
+image, where yours will land, is probed on VNC alone. If your image
 passes smoke locally, the pipeline will accept it.
 
 Add your image name to the repo `Makefile`'s wired-up `IMAGE` values
@@ -178,9 +181,9 @@ Nothing to write by hand: on every default-branch build,
 [`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml)
 from the same manifest discovery as the pipeline — the catalog cannot
 drift from the build matrix. Your entry gets `displayName` (the
-manifest `description`, truncated), `icon`, `architectures` (from
-`archs:`), a `profile` and a `recommended` deployment block derived
-from the hardening doctrine.
+manifest's `displayName:`, else derived from the variant id),
+`description`, `icon`, `architectures` (from `archs:`), a `profile` and
+a `recommended` deployment block derived from the hardening doctrine.
 
 The WaaS api-server syncs that file (see `catalogs.waasImages` in the
 [chart values](../installation/configuration)), so a merged image shows
@@ -242,6 +245,7 @@ Read
 before touching `base/` or the entrypoint — it is a verifiable
 checklist enforced by the smoke test and the Trivy scan gate. In short:
 non-root with no path to root, no secrets in layers, minimal packages,
-protocol auth always on by default. The `-dev` reduced profile (baked
-sudo) is a deliberate, narrowly-scoped exception with its own rules —
-don't add one lightly.
+VNC auth always on, and no second remote-access listener — `xrdp` and
+`sshd` are structurally absent, and no build arg can add them. The
+`-dev` reduced profile (baked sudo) is a deliberate, narrowly-scoped
+exception with its own rules — don't add one lightly.

@@ -12,8 +12,11 @@ credentials) and connects to them through the same browser → proxy →
 guacd chain. Nothing is provisioned — the machine's lifecycle is
 managed elsewhere.
 
-- Protocols: `ssh`, `vnc`, `rdp` (KasmVNC is refused — it has no
-  meaning for an external machine).
+- Protocols: `ssh`, `vnc`, `rdp` — every guacd protocol. This is the
+  only place `ssh` exists in WaaS: an in-cluster
+  [`WorkspaceTemplate`](../concepts/templates-and-protocols#protocols)
+  cannot declare it. KasmVNC is refused — it has no meaning for an
+  external machine.
 - **Opt-in via policy, fail-closed**: `spec.remoteWorkspaces: true` on
   a [`WorkspacePolicy`](../reference/crds/workspacepolicy). Without it
   the feature is invisible in the portal and refused by the API.
