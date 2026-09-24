@@ -46,4 +46,7 @@ kubectl -n <cr-namespace> patch workspace <name> --type=merge \
 ```
 
 The waas repository ships `hack/audit-orphans.sh` to list (and with
-`--clean`, reap) anything a bypassed finalizer left behind.
+`--clean`, reap) anything a bypassed finalizer left behind. One class of
+leftover exists on upgraded platforms without any bypass: the
+`<workload>-ssh` Secrets of the retired in-cluster `ssh` protocol — see
+[Troubleshooting](../troubleshooting#template-denied-rdp-on-a-linux-template-or-ssh-anywhere-in-cluster).

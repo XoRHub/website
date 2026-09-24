@@ -95,11 +95,12 @@ volumes:
 ```
 
 and read that Secret from their desktop. The workspace namespace
-normally holds at least the registry pull secret and the per-workspace
-SSH key. The same reachability comes through `projected:`, which can
-also re-introduce a ServiceAccount token WaaS otherwise disables. On
-clusters not enforcing Pod Security Admission `restricted`, `cephfs`,
-`rbd` and `iscsi` are reachable too, each with its own `secretRef`.
+normally holds at least the registry pull secret and the pod copy of
+the generated desktop password. The same reachability comes through
+`projected:`, which can also re-introduce a ServiceAccount token WaaS
+otherwise disables. On clusters not enforcing Pod Security Admission
+`restricted`, `cephfs`, `rbd` and `iscsi` are reachable too, each with
+its own `secretRef`.
 
 **`securityContext`** covers the whole struct, `privileged: true`
 included. **`podSecurityContext`** is the pod-level twin — `runAsUser: 0`,

@@ -18,7 +18,8 @@ flowchart LR
 ```
 
 - A **[`WorkspaceTemplate`](../reference/crds/workspacetemplate.mdx)**
-  describes a desktop: image, sizing, protocols (VNC/RDP/SSH/KasmVNC),
+  describes a desktop: image, sizing, protocol (VNC or KasmVNC on
+  Linux; RDP is reserved for Windows VMs, **Not Implemented Yet**),
   workload kind, uptime schedule, and which fields users may override.
 - A **[`Workspace`](../reference/crds/workspace.mdx)** instantiates a
   template for one owner. It carries little more than the template
@@ -36,7 +37,7 @@ The pages in this section cover each mechanism in depth:
 | Page | What it explains |
 |---|---|
 | [Workspace lifecycle](workspace-lifecycle.md) | Phases, conditions, pause/resume, scheduled uptime/downtime |
-| [Templates and protocols](templates-and-protocols.md) | Workload kinds, VNC/RDP/SSH/KasmVNC, credentials, user overrides |
+| [Templates and protocols](templates-and-protocols.md) | Workload kinds, VNC/KasmVNC on Linux (RDP reserved for the future Windows VMs), credentials, user overrides |
 | [Governance](governance.md) | Catalog + policies: who may create what, enforcement, audit |
 | [Placement](placement.md) | Which namespace workloads land in, naming, quotas per namespace |
 | [Volumes](volumes.md) | Home volume retention, reuse and quotas |

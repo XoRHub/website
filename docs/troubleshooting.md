@@ -36,6 +36,61 @@ A user whose group mirror is empty matches only subjects-less policies —
 that's the "everyone gets the default policy" symptom, not a priority
 bug: groups sync from the IdP at every SSO login (or via admin edit).
 
+## Template denied: `rdp` on a linux template, or `ssh` anywhere in-cluster {#template-denied-rdp-on-a-linux-template-or-ssh-anywhere-in-cluster}
+
+An in-cluster linux template declares `vnc` or `kasmvnc` — nothing
+else; `rdp` is reserved for `os: windows` templates (KubeVirt VMs,
+**Not Implemented Yet**). Two different gates say no, with two
+different messages:
+
+- **`rdp` on a linux template** (or `kasmvnc` on a windows one) is
+  denied by the admission webhook, so the error carries the usual
+  reason-code prefix:
+
+  ```
+  [InvalidProtocolParams] protocol rdp is only available on windows templates: in-cluster RDP is served by KubeVirt Windows VMs, linux templates use vnc or kasmvnc
+  [InvalidProtocolParams] protocol kasmvnc is not available on windows templates
+  ```
+
+- **`ssh`** is no longer a value of the CRD schema (`WorkspaceTemplate`
+  and `WorkspaceImage` alike), so the Kubernetes API refuses the object
+  before the webhook is even asked — a plain schema error, no
+  `[ReasonCode]`. On a `WorkspaceTemplate`, where each entry is an
+  object with a `name`:
+
+  ```
+  spec.protocols[0].name: Unsupported value: "ssh": supported values: "vnc", "rdp", "kasmvnc"
+  ```
+
+  On a `WorkspaceImage`, whose `protocols` is a plain list of names:
+
+  ```
+  spec.protocols[0]: Unsupported value: "ssh": supported values: "vnc", "rdp", "kasmvnc"
+  ```
+
+  SSH did not leave the product: it is a
+  [remote-workspace](guides/remote-workspaces) protocol, for off-cluster
+  machines. A waas-images desktop has no sshd to reach anyway
+  ([since 3.0.0](images/index.md#the-contract-with-the-workspace-cr)).
+
+**Upgrading with a template that still declares `ssh`**: an existing
+linux template is only re-validated on its next write, so until then it
+keeps advertising port 2222 (`status.protocols`, the workspace Service)
+and a session on it fails at guacd instead of being refused up front.
+Drop the entry — while it is there, the schema refuses every other
+edit to that template with the message above, before the webhook is
+even asked.
+The per-workspace `<workload>-ssh` Secrets the operator used to create
+outlive their workspace on **placed** namespaces (they carry no
+ownerReference), and a `DeleteWhenEmpty` namespace holding one is never
+reclaimed by the janitor; this sweeps them all:
+
+```sh
+kubectl get secrets -A -l app.kubernetes.io/managed-by=waas-operator --no-headers \
+  -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name \
+  | awk '$2 ~ /-ssh$/ { print "kubectl delete secret -n " $1 " " $2 }' | sh
+```
+
 ## I was signed out right after changing something about myself
 
 Expected, and it is the platform telling you so rather than hiding it.
@@ -96,8 +151,8 @@ this reason — those resolve through the account id instead.
   the target namespace.
 - The desktop container **refuses to start without
   `WAAS_DESKTOP_PASSWORD`** — under the platform this is injected
-  automatically; standalone/custom setups must provide it. Legacy
-  `VNC_PW`/`RDP_PASSWORD` are refused with an explicit error.
+  automatically; standalone/custom setups must provide it. The legacy
+  name `VNC_PW` is refused with an explicit error.
 - `CreateContainerConfigError`: a template `secretKeyRef` resolves in
   the **target** namespace, never the platform one — and with the
   per-user default that namespace is not known in advance. Provision the
@@ -154,7 +209,7 @@ contract, not a missed cron. See
 | operator | reconcile decisions, admission re-checks, teardown/janitor activity |
 | api-server | auth, policy resolution, audit trail, session sweeper |
 | wwt | session/JWT validation, guacd handshakes |
-| desktop pod | Xvnc/xrdp/sshd/supervisord logs, entrypoint warnings (e.g. RDP auth disabled) |
+| desktop pod | Xvnc/PulseAudio/supervisord logs, entrypoint warnings (a `-dev` profile booting, a legacy `VNC_RESOLUTION` alias honored) |
 
 All in the platform namespace (`kubectl -n waas logs deploy/...`),
 desktop pods in their target namespace.
