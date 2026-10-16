@@ -1,14 +1,17 @@
 # Cut a frozen docs version when waas publishes a release tag.
 #
-# Two triggers:
-#  - workflow_dispatch: run it by hand with the waas tag (the nominal
-#    path for now — one click, one PR to review);
-#  - repository_dispatch (type waas-release): lets the waas repo
-#    automate the same thing later by POSTing
+# Three triggers:
+#  - schedule: daily pull of the latest waas vX.Y.Z tag; a no-op when
+#    versions.json already holds it. Pull rather than a dispatch from
+#    waas: reading a public repo needs no cross-repo token (same shape
+#    as waas-workspace-images' release-sync.yml). GitHub disables cron
+#    workflows after 60 days without repo activity — re-enable from the
+#    Actions tab;
+#  - workflow_dispatch: run it by hand, with a tag or empty for the
+#    latest one ("waas just shipped, don't wait for the cron");
+#  - repository_dispatch (type waas-release): lets the waas repo push
 #      {"event_type":"waas-release","client_payload":{"version":"vX.Y.Z"}}
-#    with a token that has `contents:write` on this repo. Nothing on the
-#    waas side depends on this yet — manual dispatch is the documented
-#    procedure (see CONTRIBUTING.md).
+#    with a token that has `contents:write` on this repo.
 #
 # The job syncs the CRD schemas at the tag, regenerates the reference,
 # runs `docusaurus docs:version <tag>` and opens a PR — never a direct
@@ -16,17 +19,46 @@
 name: version-cut
 
 on:
+  schedule:
+    - cron: "0 8 * * *"
   workflow_dispatch:
     inputs:
       version:
-        description: "waas release tag (vX.Y.Z)"
-        required: true
+        description: "waas release tag (vX.Y.Z), empty = latest"
+        required: false
         type: string
   repository_dispatch:
     types: [waas-release]
 
 jobs:
+  resolve:
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - id: ver
+        env:
+          RAW: ${{ inputs.version || github.event.client_payload.version }}
+        run: |
+          if [ -z "$RAW" ]; then
+            # Latest stable app tag — chart-X.Y.Z and pre-releases excluded.
+            RAW=$(git ls-remote --tags --refs https://github.com/XoRHub/waas 'v*' \
+              | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | sort -V | tail -n1)
+          fi
+          if ! printf '%s' "$RAW" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$RAW' is not a vX.Y.Z tag"; exit 1
+          fi
+          if grep -q "\"$RAW\"" versions.json; then
+            echo "$RAW already cut, nothing to do"; exit 0
+          fi
+          echo "version=$RAW" >> "$GITHUB_OUTPUT"
+
   cut:
+    needs: resolve
+    if: needs.resolve.outputs.version
     runs-on: ubuntu-26.04
     permissions:
       contents: write
@@ -35,13 +67,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - id: ver
-        env:
-          RAW: ${{ inputs.version || github.event.client_payload.version }}
-        run: |
-          if ! printf '%s' "$RAW" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::'$RAW' is not a vX.Y.Z tag"; exit 1
-          fi
-          echo "version=$RAW" >> "$GITHUB_OUTPUT"
+        run: echo "version=${{ needs.resolve.outputs.version }}" >> "$GITHUB_OUTPUT"
 
       - uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5
       - run: npm ci
