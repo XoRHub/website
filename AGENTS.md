@@ -1,17 +1,18 @@
 # AGENTS.md — working on the WaaS docs site as a coding agent
 
 Docusaurus site (docs-only mode) documenting **WaaS**
-([XoRHub/waas](https://github.com/XoRHub/waas)) and **waas-images**
-([XoRHub/waas-images](https://github.com/XoRHub/waas-images)) for end
-users. Published to GitHub Pages at `https://xorhub.github.io/website/`.
+([XoRHub/waas](https://github.com/XoRHub/waas)) and its workspace images
+([XoRHub/waas-workspace-images](https://github.com/XoRHub/waas-workspace-images),
+built on [XoRHub/waas-core-images](https://github.com/XoRHub/waas-core-images))
+for end users. Published to GitHub Pages at `https://xorhub.github.io/website/`.
 
 ## Ground rules
 
 - **Facts come from the source repos.** This site paraphrases
-  `waas/docs/*.md`, `waas/helm/waas/README.md` and the waas-images
-  README/CONTRIBUTING/HARDENING — never invent behavior; when in doubt,
+  `waas/docs/*.md`, `waas/helm/waas/README.md` and the waas-workspace-images /
+  waas-core-images README/CONTRACT/HARDENING — never invent behavior; when in doubt,
   read the source repo (often available as sibling checkouts `../waas`
-  and `../waas-images`). Never modify those repos from here.
+  `../waas-workspace-images`, `../waas-core-images`). Never modify those repos from here.
 - **Audience is the end user** (platform admin or workspace user) —
   not contributors to the waas codebase. Internal CI, code structure
   and contributor workflows stay in the source repos.

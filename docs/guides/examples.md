@@ -68,7 +68,7 @@ metadata:
 spec:
   displayName: "Ubuntu 24.04 — XFCE Desktop"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
   port: 5901
   homeSize: 10Gi
   resources:
@@ -87,7 +87,7 @@ metadata:
 spec:
   displayName: "Ubuntu 24.04 — audio, schedule, overrides"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
   homeSize: 20Gi
   homeVolume:
     labels:                          # stamped on the home PVC, synced in place
@@ -137,7 +137,7 @@ metadata:
 spec:
   displayName: "Ubuntu — team credentials"
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
   homeSize: 10Gi
   protocols:
     - name: vnc
@@ -163,7 +163,7 @@ metadata:
   namespace: waas
 spec:
   displayName: "Ubuntu 24.04 XFCE"
-  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0   # exact ref; pin the digest
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2   # exact ref; pin the digest
   enabled: true
   protocols: [vnc]                 # what the image serves; ssh is never listed here
   architectures: [amd64, arm64]

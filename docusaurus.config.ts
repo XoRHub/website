@@ -104,8 +104,8 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/XoRHub/waas-images',
-          label: 'waas-images',
+          href: 'https://github.com/XoRHub/waas-workspace-images',
+          label: 'Images',
           position: 'right',
         },
       ],
@@ -125,7 +125,8 @@ const config: Config = {
           title: 'Source',
           items: [
             {label: 'XoRHub/waas', href: 'https://github.com/XoRHub/waas'},
-            {label: 'XoRHub/waas-images', href: 'https://github.com/XoRHub/waas-images'},
+            {label: 'XoRHub/waas-workspace-images', href: 'https://github.com/XoRHub/waas-workspace-images'},
+            {label: 'XoRHub/waas-core-images', href: 'https://github.com/XoRHub/waas-core-images'},
             {label: 'This site', href: 'https://github.com/XoRHub/website'},
           ],
         },

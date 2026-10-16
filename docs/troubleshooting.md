@@ -70,7 +70,7 @@ different messages:
 
   SSH did not leave the product: it is a
   [remote-workspace](guides/remote-workspaces) protocol, for off-cluster
-  machines. A waas-images desktop has no sshd to reach anyway
+  machines. A waas-workspace-images desktop has no sshd to reach anyway
   ([since 3.0.0](images/index.md#the-contract-with-the-workspace-cr)).
 
 **Upgrading with a template that still declares `ssh`**: an existing

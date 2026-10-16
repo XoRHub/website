@@ -42,7 +42,7 @@ The default install already includes:
 - a **default `WorkspacePolicy`** (priority 0, applies to every
   authenticated user: 3 workspaces max, modest per-workspace caps,
   2 h idle suspend, 14-day max lifetime);
-- the **waas-images catalog** (`catalogs.waasImages`, enabled by
+- the **XorHub images catalog** (`catalogs.waasImages`, enabled by
   default): the official XorHub desktop images are pre-approved so the
   picker is not empty on first login.
 
@@ -58,7 +58,7 @@ kubectl -n waas logs deploy/waas-api-server | grep -i password
 
 A template describes the desktop: which image, which sizing, which
 protocols. Apply this minimal template (adjust the image tag to the
-[current catalog](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml)):
+[current catalog](https://github.com/XoRHub/waas-workspace-images/tree/main/catalogs)):
 
 ```yaml title="template.yaml"
 apiVersion: waas.xorhub.io/v1alpha1
@@ -70,7 +70,7 @@ spec:
   displayName: "Ubuntu 24.04 — XFCE Desktop"
   description: "Full XFCE desktop over VNC."
   os: linux
-  image: docker.io/xorhub/ubuntu-desktop-noble:3.0.0
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
   port: 5901
   homeSize: 10Gi
   resources:
@@ -92,7 +92,7 @@ for the explicit-Secret pattern.
 :::note
 The image must be approved by the catalog: workspace creation fails
 with `ImageNotInCatalog` otherwise. The default install pre-approves
-the `docker.io/xorhub` registry, so the template above works
+the `ghcr.io/xorhub/waas-workspace-images` registry, so the template above works
 out of the box. For your own images, add a
 [`WorkspaceImage`](reference/crds/workspaceimage) entry first.
 :::

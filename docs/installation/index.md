@@ -74,8 +74,8 @@ see [Volumes](../concepts/volumes.md) for the retention model.
   one policy **nobody** can create a workspace — WaaS is fail-closed by
   design. The bootstrap policy is a visible, auditable CR you can edit
   or disable once your GitOps repo defines the real ones.
-- The **waas-images catalog** (`catalogs.waasImages`, on by default):
-  approves the official `docker.io/xorhub` desktop images so the
+- The **XorHub images catalog** (`catalogs.waasImages`, on by default):
+  approves the official `ghcr.io/xorhub/waas-workspace-images` desktop images so the
   workspace picker is not empty on day one. `catalogs.kasm` (upstream
   `docker.io/kasmweb` images, experimental KasmVNC protocol — may be
   removed at any time) exists too but is off by default.

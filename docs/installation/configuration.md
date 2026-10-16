@@ -148,7 +148,7 @@ defaultPolicy:
 adminPolicy:
   enabled: false         # explicit all-rights policy for admins (off by default)
 catalogs:
-  waasImages: { enabled: true }    # official XorHub images (docker.io/xorhub)
+  waasImages: { enabled: true }    # official XorHub images (ghcr.io/xorhub/waas-workspace-images)
   kasm: { enabled: false }         # upstream kasmweb images (KasmVNC — experimental)
 ```
 

@@ -6,9 +6,15 @@ description: What runs inside a Linux workspace — design, the contract with th
 
 # Workspace images
 
-Linux workspaces run OCI images from the
-[waas-images](https://github.com/XoRHub/waas-images) project —
-Kasm-style, 100% OSS desktop images purpose-built for the platform.
+Linux workspaces run Kasm-style, 100% OSS desktop images
+purpose-built for the platform, built in two repos:
+
+- [waas-core-images](https://github.com/XoRHub/waas-core-images) — the `core-*` base images (Xvnc,
+  audio, entrypoint, hardening), the runtime contract
+  ([`CONTRACT.md`](https://github.com/XoRHub/waas-core-images/blob/main/CONTRACT.md)) and the CI
+  toolkit every image is built with. Never in the catalog.
+- [waas-workspace-images](https://github.com/XoRHub/waas-workspace-images) — the desktops and apps the
+  picker shows, each built `FROM` a core pinned by digest.
 
 ## Design in one paragraph
 
@@ -29,8 +35,10 @@ checklist is enforced, not aspirational.
 
 ## How the images are built
 
-Every image declares one parent (`from:` in its manifest), which CI
-resolves to the exact ref built earlier in the same pipeline. An image
+Every image declares one parent (`from:` in its manifest): either a
+`core-*` image pinned by tag + digest in `images.yaml`, or another
+image of the same repo, which CI resolves to the exact ref built
+earlier in the same pipeline. An image
 contains its own layer plus every ancestor's — so **capability is
 inherited, never added later**: every image gets the Xvnc stack, the
 PulseAudio daemon and the hardening from the core at the root of its
@@ -39,15 +47,15 @@ descends from the published Ubuntu desktop.
 
 ```mermaid
 flowchart TB
-    subgraph base ["base/ — core-* build parents, never published"]
+    subgraph base ["waas-core-images — core-* parents, pinned by digest"]
         CORE["core-ubuntu-noble<br/>core-debian-13 · core-fedora-43<br/><b>VNC only</b>"]
     end
 
-    subgraph desktop ["desktop/ — XFCE + baseline (browser, git, ssh client, mise)"]
+    subgraph desktop ["waas-workspace-images desktop/ — XFCE + baseline (browser, git, ssh client, mise)"]
         OSD["ubuntu-desktop-noble<br/>debian-desktop-13<br/>fedora-desktop-43"]
     end
 
-    subgraph apps ["apps/"]
+    subgraph apps ["waas-workspace-images apps/"]
         KIOSK["single-app kiosks (WAAS_APP)<br/>no desktop in the image"]
         DT["devtools<br/>full XFCE desktop + VS Code"]
     end
@@ -66,15 +74,23 @@ same build, not a runtime flag.
 
 ### Build order
 
-CI derives each image's **depth** from that parentage — 0 for a root,
-parent + 1 otherwise — and builds one depth at a time:
+The cores are released on their own in waas-core-images (`X.Y.Z`,
+plus a full no-cache rebuild and patch release every Monday). The
+workspace repo never builds a core: Renovate proposes each new core
+release as a PR bumping the pinned digests, which rebuilds every
+dependent image — so a security fix in a core reaches the desktops
+through one reviewed (patch: auto-merged) PR.
+
+Within the workspace repo, CI derives each image's **depth** from its
+parentage — 0 when the parent is a pinned core, parent + 1 otherwise —
+and builds one depth at a time:
 
 ```mermaid
 flowchart LR
-    L0["<b>layer-0</b> — 3 images<br/>core-ubuntu-noble<br/>core-debian-13<br/>core-fedora-43"]
-    L1["<b>layer-1</b> — 8 images<br/>ubuntu-desktop-noble<br/>debian-desktop-13 · fedora-desktop-43<br/>firefox · chrome · libreoffice<br/>hermes-agent · -dev"]
-    L2["<b>layer-2</b> — 2 images<br/>devtools · devtools-dev"]
-    L0 -->|"merge + push"| L1 -->|"merge + push"| L2
+    C["<b>pinned cores</b><br/>core-ubuntu-noble<br/>core-debian-13<br/>core-fedora-43"]
+    L0["<b>layer-0</b> — 8 images<br/>ubuntu-desktop-noble<br/>debian-desktop-13 · fedora-desktop-43<br/>firefox · chrome · libreoffice<br/>hermes-agent · -dev"]
+    L1["<b>layer-1</b> — 2 images<br/>devtools · devtools-dev"]
+    C -->|"FROM tag@digest"| L0 -->|"merge + push"| L1
 ```
 
 Within a wave everything runs in parallel — one job per image **per
@@ -85,10 +101,9 @@ which is what makes a change to a base propagate through the whole tree
 in a single pipeline run.
 
 Depth is a *consequence* of `from:`, not something you set. Only
-`devtools` reaches depth 2 today, and the generator hard-fails above it
-— `.github/workflows/build.yml` wires exactly three `layer-N`/`merge-N`
-pairs, so a deeper tree is a deliberate ~10-line change there, never a
-silent one.
+`devtools` reaches depth 1 today, and the generator hard-fails above
+the `max-depth` the workflow declares — a deeper tree is a deliberate
+`layer-N`/`merge-N` addition to `build.yml`, never a silent one.
 
 A kiosk's `WAAS_APP` session mode runs its one application undecorated
 and maximized, with no panel, terminal or window-manager keybindings
@@ -104,8 +119,10 @@ the kiosks deliberately do not, having no shell to use it from.
 ## The contract with the Workspace CR
 
 Any image honoring this contract works as a WaaS Linux workspace —
-that's the whole interface, whether the image comes from waas-images or
-[your own build](build-your-own.md):
+that's the whole interface, whether the image comes from
+waas-workspace-images or [your own build](build-your-own.md). The
+normative, semver'd version is the core's
+[`CONTRACT.md`](https://github.com/XoRHub/waas-core-images/blob/main/CONTRACT.md):
 
 | Aspect                          | Value                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -139,11 +156,17 @@ Security defaults worth knowing:
   one only when you genuinely need system packages: for language
   runtimes and CLI tools, the hardened image is enough (see below).
 
-:::note Upgrading from a 2.x image
-Earlier majors carried an optional xrdp bridge and an opt-in sshd on
-the OS desktops (`WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`,
+:::note Upgrading from the `docker.io/xorhub` images (waas ≤ 0.3)
+The images moved to GHCR (`ghcr.io/xorhub/waas-workspace-images`)
+with waas 0.4. Running workspaces keep their old image; the bootstrap
+catalog now approves the GHCR registry only, so move templates to the
+matching `X.Y.n` ref (or keep an explicit `WorkspaceImage` for the old
+one).
+
+Earlier `docker.io/xorhub` 2.x majors carried an optional xrdp bridge
+and an opt-in sshd on the OS desktops (`WAAS_RDP_ENABLED`, `WAAS_RDP_AUTH_ENABLED`,
 `WAAS_SSH_ENABLED`, `WAAS_SSH_AUTHORIZED_KEYS(_FILE)`,
-`WAAS_TLS_CERT`/`_KEY`). Since **3.0.0** the daemons, their build args
+`WAAS_TLS_CERT`/`_KEY`). Since 3.0.0 — and in every GHCR image — the daemons, their build args
 and those variables are gone rather than defaulted off: setting them
 does nothing, and a template still declaring `rdp` or `ssh` on one of
 these images is rejected by the platform itself, not by the image —
@@ -180,16 +203,18 @@ user-installed `python3` shadows the image's own.
 
 The list of published images is deliberately **not** duplicated here —
 it changes with every release. The authoritative, machine-readable list
-is the catalog the platform itself syncs from:
-[`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml)
-(and
-[`catalog-kasmweb.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-kasmweb.yaml)
-for the optional upstream Kasm images). Roughly: OS desktops
+is the catalog the platform itself syncs from, one per waas minor:
+[`catalogs/<X.Y>/catalog.yaml`](https://github.com/XoRHub/waas-workspace-images/tree/main/catalogs)
+(and `catalog-kasmweb.yaml` next to it for the optional upstream Kasm
+images). Roughly: OS desktops
 (Ubuntu/Debian/Fedora XFCE) and per-app images (Firefox, Chrome,
 LibreOffice, VS Code devtools, Hermes Agent) on amd64 + arm64.
 
-Image tags are **immutable** (`<version>`, plus throwaway
-`<version>-g<sha>` branch tags); published images are cosign-signed
-with a CycloneDX SBOM attested to the image reference.
+Images are published as `ghcr.io/xorhub/waas-workspace-images/<image>`.
+Release tags are `X.Y.n` — **`X.Y` is the waas minor** the image
+targets, `n` the image's own patch — and **immutable**; the catalog
+references them by tag. Moving tags exist too (`X.Y`, `latest`,
+`edge` for the latest green `main`). Releases are cosign-signed
+(keyless) with a CycloneDX SBOM attested to the digest.
 
 The interesting part is building your own → next page.
