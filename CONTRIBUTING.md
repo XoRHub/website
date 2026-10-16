@@ -49,11 +49,13 @@ Review the schema diff and commit (`docs: sync CRD schemas to waas vX.Y.Z`).
 ## Cutting a docs version (waas release)
 
 When waas publishes a `vX.Y.Z` tag, freeze the current docs as that
-version. **Nominal path**: run the
-[`version-cut` workflow](.github/workflows/version-cut.yml)
-(Actions → version-cut → Run workflow → enter the tag). It syncs the
-schemas at the tag, runs `docusaurus docs:version vX.Y.Z`, prunes the
-previous snapshot and opens a PR to review.
+version. **Nominal path**: nothing to do — the
+[`version-cut` workflow](.github/workflows/version-cut.yml) runs daily,
+picks up the latest waas `vX.Y.Z` tag not yet in `versions.json`,
+syncs the schemas at the tag, runs `docusaurus docs:version vX.Y.Z`,
+prunes the previous snapshot and opens a PR to review. Don't want to
+wait for the cron: Actions → version-cut → Run workflow (tag optional,
+empty = latest).
 
 The equivalent by hand:
 
