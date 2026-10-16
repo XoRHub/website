@@ -17,7 +17,7 @@ visible, auditable CRs — editable and removable like any other.
 |---|---|---|
 | `defaultPolicy.*` | catch-all `WorkspacePolicy` (`default`, priority 0) | **enabled** |
 | `adminPolicy.*` | all-rights `WorkspacePolicy` (`admins`, priority 10000) | disabled |
-| `catalogs.waasImages.*` | registry-wide `WorkspaceImage` (`docker.io/xorhub`) | **enabled** |
+| `catalogs.waasImages.*` | registry-wide `WorkspaceImage` (`ghcr.io/xorhub/waas-workspace-images`) | **enabled** |
 | `catalogs.kasm.*` | registry-wide `WorkspaceImage` (`docker.io/kasmweb`, KasmVNC) | disabled |
 
 ## The default policy — what every user can do out of the box
@@ -33,7 +33,7 @@ may:
 | Workspaces running at once (`maxRunningWorkspaces`) | **unlimited** — the chart default is `null`, and null limits are omitted from the rendered policy |
 | Per-workspace caps | 1 CPU, 1 Gi memory, 5 Gi home volume |
 | Aggregate caps (all their workspaces + retained volumes) | 2 CPU, 3 Gi memory, 15 Gi storage |
-| Images | the **whole enabled catalog** (`images: []`) — i.e. every `docker.io/xorhub` image, see below |
+| Images | the **whole enabled catalog** (`images: []`) — i.e. every `ghcr.io/xorhub/waas-workspace-images` image, see below |
 | Idle suspend | paused after **2 h** without a session (compute freed, home kept) |
 | Max lifetime | deleted after **336 h / 14 days** — **home volume included** (TTL contract) |
 | Clipboard | both directions allowed |
@@ -78,12 +78,13 @@ adminPolicy:
 ## The bootstrap catalogs — what "approved" means here
 
 `catalogs.waasImages` (on by default) renders a **registry-wide**
-`WorkspaceImage`: it approves *every* image under `docker.io/xorhub`
+`WorkspaceImage`: it approves *every* image under `ghcr.io/xorhub/waas-workspace-images`
 for the `vnc` protocol — the only one those Linux images serve — and
 the api-server syncs the picker
 metadata (names, icons, versions, recommended sizing/securityContext)
 from the published
-[`catalog-waas-images.yaml`](https://github.com/XoRHub/waas-images/blob/main/catalog-waas-images.yaml).
+[`catalogs/<X.Y>/catalog.yaml`](https://github.com/XoRHub/waas-workspace-images/tree/main/catalogs) — one per waas minor, the chart derives `X.Y` from its
+`appVersion` so a release only reads a catalog generated for its own schema.
 Cosmetic metadata only — the approval itself never changes without an
 admin.
 

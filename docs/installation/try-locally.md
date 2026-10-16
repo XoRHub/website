@@ -27,22 +27,24 @@ cluster, use the [Helm chart](./index.md).
 
 ```sh
 git clone https://github.com/XoRHub/waas && cd waas
-# The desktop images are expected as a sibling checkout:
-git clone https://github.com/XoRHub/waas-images ../waas-images
 
 mise install          # every pinned tool
-make dev-bootstrap    # creates the k3d cluster, builds and imports every
-                      # image, deploys the chart, seeds the dev catalog
+make dev-bootstrap    # creates the k3d cluster, builds and imports the
+                      # service images, deploys the chart, seeds the dev catalog
 ```
 
 `make dev-bootstrap` prints the portal URL and credentials at the end.
-The sibling checkout path can be overridden with `WAAS_IMAGES_DIR`.
+The desktops are pulled from the published registry, so no checkout of
+[waas-workspace-images](https://github.com/XoRHub/waas-workspace-images)
+is needed — only iterating on a desktop locally
+(`LOCAL_IMAGES="<variant>…"`) expects one as a sibling `../waas-workspace-images`
+(override with `WAAS_WORKSPACE_IMAGES_DIR`).
 
 ## Day-2 commands
 
 ```sh
 make dev-reload       # rebuild + redeploy services/frontend after changes
-make dev-reload-all   # also rebuilds the desktop images
+make dev-reload-all   # also rebuilds LOCAL_IMAGES
 make smoke            # validates real per-protocol sessions end to end
 make dev-down         # tears the cluster down
 ```

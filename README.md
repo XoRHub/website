@@ -4,8 +4,8 @@
 
 End-user documentation for [WaaS](https://github.com/XoRHub/waas)
 (Kubernetes-native Workspace-as-a-Service) and
-[waas-images](https://github.com/XoRHub/waas-images) (the workspace
-desktop images). Built with [Docusaurus](https://docusaurus.io),
+its workspace images ([waas-workspace-images](https://github.com/XoRHub/waas-workspace-images) and
+[waas-core-images](https://github.com/XoRHub/waas-core-images)). Built with [Docusaurus](https://docusaurus.io),
 published on GitHub Pages: **https://xorhub.github.io/website/**
 
 ## Local development

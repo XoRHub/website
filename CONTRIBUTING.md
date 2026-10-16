@@ -1,8 +1,8 @@
 # Contributing
 
-This repo is the documentation site for WaaS and waas-images. Content
+This repo is the documentation site for WaaS and its workspace images. Content
 lives in `docs/` (Markdown/MDX, Docusaurus). The source of truth for
-*facts* is always the `waas` / `waas-images` repos — when their docs
+*facts* is always the `waas` / `waas-workspace-images` / `waas-core-images` repos — when their docs
 change, this site follows.
 
 ## Local setup

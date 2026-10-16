@@ -55,7 +55,7 @@ spec:
 
 Which protocols a template may declare follows its `os`:
 
-- a **`linux`** template (a waas-images or `kasmweb/*` pod) declares
+- a **`linux`** template (a waas-workspace-images or `kasmweb/*` pod) declares
   `vnc` or `kasmvnc`. **`kasmvnc` is exclusive**: it bypasses guacd
   entirely, so a template declaring it may declare no other protocol;
 - `rdp` is **reserved for `windows`** templates — KubeVirt VMs, which
@@ -98,7 +98,7 @@ cycle. Don't build production templates on it — prefer `vnc`.
 ### Which protocol should a Linux template use?
 
 **VNC** — it is the only protocol a
-[waas-images](../images/index.md) desktop serves (no xrdp, no sshd in
+[waas-workspace-images](../images/index.md) desktop serves (no xrdp, no sshd in
 those images since 3.0.0). `kasmvnc` is for the official `kasmweb/*`
 images and their native web client, under the experimental caveat
 above. See the [protocol capability matrix](#protocol--feature-matrix)
@@ -129,7 +129,7 @@ order:
    resolves the same Secret at connect time. Zero template
    configuration.
 3. **Literal `WAAS_DESKTOP_PASSWORD` with `docker run`** — the
-   standalone path for running a waas-images build outside the
+   standalone path for running a waas-workspace-images build outside the
    platform. Literal env passwords in a template are **not** read by
    the platform.
 
@@ -137,7 +137,7 @@ Rotation of generated credentials is create-only: delete the Secret and
 roll the workload; the operator never rotates on its own.
 
 Usernames default per protocol when no credentials Secret sets one:
-`waas_user` for `vnc` (the fixed account of waas-images builds) and
+`waas_user` for `vnc` (the fixed account of every WaaS image) and
 `kasm_user` for `kasmvnc`. **`rdp` never defaults** — a Windows VM has
 no such account — so a windows template (**Not Implemented Yet**)
 whose `rdp` entry names no Secret is refused at connect time with an
@@ -226,7 +226,7 @@ KasmVNC, reverse-proxied by wwt; and — once Windows workspaces exist
 
 | Feature            | VNC (linux pod)                         | RDP (windows VM — Not Implemented Yet)                                                                | KasmVNC (experimental) |
 | ------------------ | --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------- |
-| Audio playback     | ✅ (`enable-audio` + `exposeAudioPort`) | ⚙️ guacd's RDP audio channel (`disable-audio`); no `exposeAudioPort`, PulseAudio is a waas-images thing | ❌                     |
+| Audio playback     | ✅ (`enable-audio` + `exposeAudioPort`) | ⚙️ guacd's RDP audio channel (`disable-audio`); no `exposeAudioPort`, PulseAudio is a WaaS-image thing | ❌                     |
 | Governed clipboard | ✅ live                                 | ✅ by design, text only (same filter) — not verified in a live session                                | ✅ container-side      |
 | Persistent home    | ✅                                      | ✅                                                                                                    | ✅                     |
 | File transfer      | 🚫 platform-blocked                     | 🚫                                                                                                    | 🚫                     |

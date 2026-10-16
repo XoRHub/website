@@ -77,4 +77,4 @@ site/VLAN in multi-site setups.
 
 guacd must be able to **egress** to the target machines — adapt your
 NetworkPolicies if you restrict egress (the example policy shipped with
-waas-images only covers in-cluster traffic).
+waas-workspace-images only covers in-cluster traffic).

@@ -87,7 +87,7 @@ quota) that's fine, just mirror the change in Git.
 
 - If you kept the bootstrap **registry-wide** entry, new official
   images appear in the picker on their own (catalog sync) — review the
-  [waas-images releases](https://github.com/XoRHub/waas-images) rather
+  [waas-workspace-images releases](https://github.com/XoRHub/waas-workspace-images/releases) rather
   than the picker.
 - **A new or repointed image syncs immediately** — console save or
   `kubectl apply`, both show the discovered entries within seconds, and

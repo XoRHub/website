@@ -75,7 +75,8 @@ a first-class citizen rather than a side door.
 ## Where the desktop images come from
 
 Linux workspaces run OCI images from the sibling
-[waas-images](https://github.com/XoRHub/waas-images) project:
+[waas-workspace-images](https://github.com/XoRHub/waas-workspace-images) project, built on the
+`core-*` images of [waas-core-images](https://github.com/XoRHub/waas-core-images):
 Kasm-style, 100% OSS desktop images (TigerVNC over VNC only, XFCE,
 per-app kiosks) built to run **unprivileged with a read-only
 root filesystem**. You can also approve any third-party image that
