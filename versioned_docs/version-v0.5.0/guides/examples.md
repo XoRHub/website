@@ -1,0 +1,208 @@
+---
+sidebar_position: 2
+title: Example manifests
+description: Minimal and advanced YAML for each CRD, ready to adapt.
+---
+
+# Example manifests
+
+All examples assume the platform namespace is `waas`. Start minimal;
+every field is documented in the [CRD reference](../reference/crds/).
+
+## Workspace — minimal
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: Workspace
+metadata:
+  name: alice-ubuntu
+  namespace: waas
+spec:
+  owner: alice                # your authenticated username
+  templateRef: ubuntu-desktop
+```
+
+## Workspace — with overrides
+
+Every override must be delegated by the template **and** allowed by
+your policy (`overrides.allowedFields`), or admission denies it:
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: Workspace
+metadata:
+  name: alice-dev
+  namespace: waas
+spec:
+  owner: alice
+  templateRef: devtools
+  displayName: "Dev box — project X"
+  resources:                       # needs "resources" delegated
+    requests: { cpu: "1", memory: 2Gi }
+    limits: { cpu: "4", memory: 8Gi }
+  overrides:
+    env:                           # needs "env"; merged by name, workspace wins
+      - name: TZ
+        value: Europe/Paris
+    nodeSelector:                  # needs "nodeSelector"
+      kubernetes.io/arch: amd64
+```
+
+## Workspace — reusing a retained home volume
+
+```yaml
+spec:
+  owner: alice
+  templateRef: ubuntu-desktop
+  homeVolumeName: alice-old-desktop-home   # same owner, same target namespace
+```
+
+## WorkspaceTemplate — minimal
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: WorkspaceTemplate
+metadata:
+  name: ubuntu-desktop
+  namespace: waas
+spec:
+  displayName: "Ubuntu 24.04 — XFCE Desktop"
+  os: linux
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
+  port: 5901
+  homeSize: 10Gi
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: "2", memory: 4Gi }
+```
+
+## WorkspaceTemplate — audio, schedule and overrides
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: WorkspaceTemplate
+metadata:
+  name: ubuntu-desktop-advanced
+  namespace: waas
+spec:
+  displayName: "Ubuntu 24.04 — audio, schedule, overrides"
+  os: linux
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
+  homeSize: 20Gi
+  homeVolume:
+    labels:                          # stamped on the home PVC, synced in place
+      recurring-job.longhorn.io/source: enabled
+      recurring-job-group.longhorn.io/backup-daily: enabled
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: "2", memory: 4Gi }
+  protocols:
+    - name: vnc
+      port: 5901
+      default: true
+      exposeAudioPort: true          # PulseAudio :4713 for enable-audio
+      params:
+        color-depth: "24"
+      userParams: [cat:display, cat:audio]
+  env:
+    - name: WAAS_VNC_RESOLUTION
+      value: "1920x1080"
+  schedule:
+    timezone: Europe/Paris
+    uptime: ["0 8 * * 1-5"]
+    downtime: ["0 20 * * *"]
+  overrides:
+    allowedFields: [env, resources, protocolParams, schedule]
+```
+
+:::note Which protocol names are accepted
+`protocols[].name` is `vnc` or `kasmvnc` on an `os: linux` template.
+`rdp` is reserved for `os: windows` templates (KubeVirt VMs — **Not
+Implemented Yet**) and denied at admission on a linux one; `ssh` is not
+an in-cluster protocol at all — it belongs to
+[remote workspaces](remote-workspaces). See
+[Templates and protocols](../concepts/templates-and-protocols#protocols)
+and the exact
+[denial messages](../troubleshooting#template-denied-rdp-on-a-linux-template-or-ssh-anywhere-in-cluster).
+:::
+
+## WorkspaceTemplate — explicit credentials from a Secret
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: WorkspaceTemplate
+metadata:
+  name: ubuntu-shared-creds
+  namespace: waas
+spec:
+  displayName: "Ubuntu — team credentials"
+  os: linux
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2
+  homeSize: 10Gi
+  protocols:
+    - name: vnc
+      port: 5901
+      credentialsSecretRef: team-desktop-creds   # keys: username/password
+  env:
+    - name: WAAS_DESKTOP_PASSWORD                # same Secret feeds the pod
+      valueFrom:
+        secretKeyRef: { name: team-desktop-creds, key: password }
+```
+
+Ship `team-desktop-creds` with External Secrets/Vault. The api-server
+resolves the Secret server-side at connect time — the browser never
+sees the values.
+
+## WorkspaceImage — catalog entry
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: WorkspaceImage
+metadata:
+  name: ubuntu-desktop-noble
+  namespace: waas
+spec:
+  displayName: "Ubuntu 24.04 XFCE"
+  image: ghcr.io/xorhub/waas-workspace-images/ubuntu-desktop-noble:0.4.2   # exact ref; pin the digest
+  enabled: true
+  protocols: [vnc]                 # what the image serves; ssh is never listed here
+  architectures: [amd64, arm64]
+  resources:
+    default: { cpu: "1", memory: 2Gi }
+    min: { cpu: 250m, memory: 512Mi }
+    max: { cpu: "4", memory: 8Gi }
+```
+
+## WorkspacePolicy — a team policy
+
+```yaml
+apiVersion: waas.xorhub.io/v1alpha1
+kind: WorkspacePolicy
+metadata:
+  name: data-team
+  namespace: waas
+spec:
+  priority: 200                     # 100–999: group policies
+  subjects:
+    - kind: Group
+      name: data-team               # IdP group (OIDC groups claim)
+  images: [ubuntu-desktop-noble, devtools]
+  limits:
+    maxWorkspaces: 5                # ownership — paused workspaces count
+    maxRunningWorkspaces: 2         # compute concurrency — paused ones don't; pausing frees a slot
+    perWorkspace: { cpu: "4", memory: 8Gi, home: 50Gi }
+    aggregate: { cpu: "8", memory: 16Gi, storage: 200Gi }
+  lifecycle:
+    idleSuspendAfter: 4h
+    maxLifetime: 720h               # 30 days — deletes home too, TTL contract
+  clipboard:
+    copyFromWorkspace: true
+    pasteToWorkspace: false         # no pasting INTO the workspace
+  overrides:
+    allowedFields: [env, resources, protocolParams]
+```
+
+:::tip
+Always keep a `default` policy at priority 0 — **no matching policy
+means denial**, for everyone.
+:::

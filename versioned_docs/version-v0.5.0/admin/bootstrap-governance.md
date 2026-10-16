@@ -1,0 +1,142 @@
+---
+sidebar_position: 1
+title: What the chart bootstraps
+description: The policies and catalog entries a default install renders, and exactly what rights they grant.
+---
+
+# What the chart bootstraps
+
+WaaS governance is **fail-closed**: with zero `WorkspacePolicy` objects
+in the cluster, *nobody* can create a workspace — not even admins. And
+with an empty catalog, there is no image to pick. So the chart can
+render a small set of governance CRs at install time, so a fresh
+platform works before any GitOps repo exists. They are ordinary,
+visible, auditable CRs — editable and removable like any other.
+
+| Helm block | Object | Default |
+|---|---|---|
+| `defaultPolicy.*` | catch-all `WorkspacePolicy` (`default`, priority 0) | **enabled** |
+| `adminPolicy.*` | all-rights `WorkspacePolicy` (`admins`, priority 10000) | disabled |
+| `catalogs.waasImages.*` | registry-wide `WorkspaceImage` (`ghcr.io/xorhub/waas-workspace-images`) | **enabled** |
+| `catalogs.kasm.*` | registry-wide `WorkspaceImage` (`docker.io/kasmweb`, KasmVNC) | disabled |
+
+## The default policy — what every user can do out of the box
+
+`defaultPolicy` renders a policy with **no subjects**, which by
+convention matches **every authenticated user**, at priority 0 so any
+policy you add later wins. Concretely, on a fresh install every user
+may:
+
+| Right | Default value |
+|---|---|
+| Workspaces owned (`maxWorkspaces`, paused included) | **3** |
+| Workspaces running at once (`maxRunningWorkspaces`) | **unlimited** — the chart default is `null`, and null limits are omitted from the rendered policy |
+| Per-workspace caps | 1 CPU, 1 Gi memory, 5 Gi home volume |
+| Aggregate caps (all their workspaces + retained volumes) | 2 CPU, 3 Gi memory, 15 Gi storage |
+| Images | the **whole enabled catalog** (`images: []`) — i.e. every `ghcr.io/xorhub/waas-workspace-images` image, see below |
+| Idle suspend | paused after **2 h** without a session (compute freed, home kept) |
+| Max lifetime | deleted after **336 h / 14 days** — **home volume included** (TTL contract) |
+| Clipboard | both directions allowed |
+| Template overrides | `env`, `resources`, `schedule` — still intersected with each template's own allow-list |
+| Remote workspaces | **off** |
+
+Two things worth a second look before going to production:
+
+- **`maxLifetime: 336h` destroys data**: a policy TTL deletes the home
+  volume along with the workspace — that is the documented contract of
+  a TTL. If your users keep long-lived desktops, raise or remove it.
+- **`volumes` is no longer in the default override list**: chart 0.2.x
+  and earlier granted it, so an upgraded install may still carry it in
+  `defaultPolicy.overrides.allowedFields`. Check yours. Granting
+  `volumes` — or either security context — on a template *and* a policy
+  lets a user mount arbitrary volume sources, including any Secret in
+  the workspace namespace; see [what delegating these rights
+  grants](../accepted-limitations#before-you-delegate-these-rights-admins).
+
+## The admin policy — off by default, and why you probably want it
+
+Admins **are subject to the admission gates like everyone else**: they
+bypass override allow-lists, but quotas, catalog and lifecycle checks
+apply to them through whatever policy matches them — which, on a fresh
+install, is the default policy above (3 workspaces, 14-day TTL…).
+
+`adminPolicy.enabled: true` renders the explicit escape hatch: priority
+10000, subjects `User:admin` plus whatever IdP groups you add, **no
+limits or lifecycle fields** (absent fields constrain nothing), the
+whole catalog, every override field, remote workspaces on. The bypass
+is deliberately **a CR you can read and audit** — visible in the
+effective-policy debugger — not a hidden code path.
+
+```yaml
+adminPolicy:
+  enabled: true
+  subjects:
+    - { kind: User, name: admin }
+    - { kind: Group, name: platform-admins }   # your IdP admin group
+```
+
+## The bootstrap catalogs — what "approved" means here
+
+`catalogs.waasImages` (on by default) renders a **registry-wide**
+`WorkspaceImage`: it approves *every* image under `ghcr.io/xorhub/waas-workspace-images`
+for the `vnc` protocol — the only one those Linux images serve — and
+the api-server syncs the picker
+metadata (names, icons, versions, recommended sizing/securityContext)
+from the published
+[`catalogs/<X.Y>/catalog.yaml`](https://github.com/XoRHub/waas-workspace-images/tree/main/catalogs) — one per waas minor, the chart derives `X.Y` from its
+`appVersion` so a release only reads a catalog generated for its own schema.
+Cosmetic metadata only — the approval itself never changes without an
+admin.
+
+Three things trigger that sync:
+
+- **creation or a source change**, without waiting for a tick — on the
+  console's PUT (synchronously, so the saved form already shows the
+  entry count) and on a `kubectl apply` alike, where entries appear
+  within seconds. The discriminant is `spec.catalog` itself: editing
+  display fields never refetches, only a **moved source** does;
+- the **periodic pass**, `apiServer.catalogSyncInterval` (default 6 h);
+- the per-image **Sync now** button (`POST
+  /api/v1/admin/images/{name}/sync`), the escape hatch when the manifest
+  *content* changed under an unchanged source — no automatic trigger can
+  see that.
+
+:::caution Setting `catalogSyncInterval` ≤ 0
+It disables **only the ticker** — creation/source-change and manual
+syncs keep working — but nothing then retries a **failed** sync either.
+A transient fetch failure while applying a new image leaves it without
+catalog entries until an admin clicks *Sync now* or the source itself
+moves. Only reasonable where syncs are driven deliberately.
+:::
+
+Implication: combined with the default policy's `images: []`, **any
+authenticated user can run any official XorHub desktop image** on day
+one. That is the intended out-of-the-box experience; tighten it by
+listing specific images in your policies, or by replacing the
+registry-wide entry with per-image `WorkspaceImage` objects (exact
+refs, digests pinned).
+
+`catalogs.kasm` (off by default) is the same idea for the upstream
+`docker.io/kasmweb` images over the **KasmVNC** protocol — an extra
+data plane an admin opts into deliberately. Note that KasmVNC support
+is [experimental](../concepts/templates-and-protocols.md#protocols)
+and may be removed at any time.
+
+## Handing over to GitOps
+
+The bootstrap objects exist so day one works without a Git repo. The
+doctrine, for each of them, is **never both at once for the same
+name**:
+
+1. define the equivalent object in your GitOps repo
+   (e.g. `gitops/governance/policies.yaml`, `images.yaml` in the waas
+   repo layout);
+2. disable the matching chart flag (`defaultPolicy.enabled: false`, …)
+   in the same change;
+3. from then on Git is the source of truth — remember that admin
+   console edits to these CRs are manual overrides ArgoCD will
+   overwrite on its next sync (configure `selfHeal`/`ignoreDifferences`
+   to taste).
+
+Keep a catch-all policy at priority 0 in Git too: **no matching policy
+means denial, for everyone**.
