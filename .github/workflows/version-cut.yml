@@ -69,7 +69,7 @@ jobs:
       - id: ver
         run: echo "version=${{ needs.resolve.outputs.version }}" >> "$GITHUB_OUTPUT"
 
-      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5
       - run: npm ci
 
       - name: Sync CRD schemas at the released tag
